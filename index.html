@@ -231,18 +231,15 @@
         let polylineRuta = null;
         let watchId = null;
 
-        // Base de datos limpia con reseteo automático de versiones viejas
         let asesoresDB = {
             "1596": { id: "1596", nombre: "Administrador General", rol: "admin" },
             "1346": { id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, paradaActiva: 0, puntos: [] },
             "7946": { id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, paradaActiva: 0, puntos: [] }
         };
 
-        // Forzar limpieza y actualización de clave admin limpia
-        const DB_KEY = "asesoresDB_manoamiga_v5";
+        const DB_KEY = "asesoresDB_manoamiga_v6";
         if (localStorage.getItem(DB_KEY)) {
             asesoresDB = JSON.parse(localStorage.getItem(DB_KEY));
-            // Asegurar que el admin exista siempre con la clave correcta
             if (!asesoresDB["1596"]) {
                 asesoresDB["1596"] = { id: "1596", nombre: "Administrador General", rol: "admin" };
             }
@@ -253,12 +250,26 @@
         let indexParadaSeleccionadaModal = null;
         let imagenBase64Procesada = "";
 
+        // --- VALIDACIÓN ESTRICTA DE ROL Y CLAVE ---
         function intentarLogin() {
+            const rolSeleccionado = document.getElementById("login-role").value; // "admin" o "asesor"
             const pass = document.getElementById("login-pass").value.trim();
+
             const cuenta = asesoresDB[pass];
 
             if (!cuenta) {
                 alert("PIN o Contraseña incorrecta.");
+                return;
+            }
+
+            // Validar estrictamente que la clave corresponda al rol seleccionado
+            if (rolSeleccionado === "admin" && cuenta.rol !== "admin") {
+                alert("⚠️ Esta clave no pertenece a un Administrador.");
+                return;
+            }
+
+            if (rolSeleccionado === "asesor" && cuenta.rol !== "asesor") {
+                alert("⚠️ Esta clave pertenece al Administrador. Seleccione 'Administrador' en el menú.");
                 return;
             }
 
