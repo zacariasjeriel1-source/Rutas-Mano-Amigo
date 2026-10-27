@@ -12,10 +12,18 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @media print {
+            body * { visibility: hidden; }
+            #modal-evidencias, #modal-evidencias * { visibility: visible; }
+            #modal-evidencias { position: absolute; left: 0; top: 0; width: 100%; background: white !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased">
 
-    <!-- PANTALLA DE LOGIN / AUTENTICACIÓN -->
+    <!-- PANTALLA DE LOGIN -->
     <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-90 p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-100">
             <div class="text-center mb-8">
@@ -29,18 +37,18 @@
             <div class="space-y-5">
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Seleccione Tipo de Acceso</label>
-                    <select id="login-role" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-slate-50">
+                    <select id="login-role" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50">
                         <option value="asesor">Asesor de Crédito (PIN)</option>
                         <option value="admin">Administrador (Clave Única)</option>
                     </select>
                 </div>
 
-                <div id="container-pin">
+                <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Ingrese Código PIN / Contraseña</label>
-                    <input type="password" id="login-pass" maxlength="6" placeholder="••••" class="w-full text-center text-2xl tracking-widest px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-slate-50">
+                    <input type="password" id="login-pass" maxlength="6" placeholder="••••" class="w-full text-center text-2xl tracking-widest px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50">
                 </div>
 
-                <button onclick="intentarLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-500/30 transition duration-200 flex items-center justify-center gap-2">
+                <button onclick="intentarLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-500/30 transition flex items-center justify-center gap-2">
                     <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión Segura
                 </button>
             </div>
@@ -49,7 +57,6 @@
 
     <!-- APLICACIÓN PRINCIPAL -->
     <div id="app-container" class="min-h-screen flex flex-col hidden">
-        <!-- Barra Superior -->
         <header class="bg-slate-900 text-white shadow-md z-30 px-6 py-4 flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <div class="bg-blue-600 p-2.5 rounded-xl shadow">
@@ -62,7 +69,7 @@
             </div>
             <div class="flex items-center gap-3">
                 <button onclick="abrirModalEvidencias()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow">
-                    <i class="fa-solid fa-images"></i> Ver Registros y Fotos
+                    <i class="fa-solid fa-images"></i> Bitácora y Fotos
                 </button>
                 <span id="user-badge" class="bg-slate-800 text-blue-400 text-xs px-3 py-2 rounded-xl border border-slate-700 font-medium"></span>
                 <button onclick="cerrarSesion()" class="bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-xs transition border border-slate-700">
@@ -71,12 +78,9 @@
             </div>
         </header>
 
-        <!-- Contenido Principal -->
         <div class="flex-1 flex flex-col lg:flex-row">
             <!-- Panel Lateral -->
             <aside class="w-full lg:w-[440px] bg-white border-r border-slate-200 flex flex-col z-20 shadow-lg">
-                
-                <!-- Admin Box -->
                 <div id="admin-selector-box" class="p-4 bg-slate-50 border-b border-slate-200 hidden space-y-3">
                     <h3 class="font-bold text-xs uppercase text-slate-700 flex items-center gap-2">
                         <i class="fa-solid fa-users-gear text-blue-600"></i> Panel de Administración
@@ -100,7 +104,6 @@
                     </div>
                 </div>
 
-                <!-- Controles -->
                 <div class="p-5 border-b border-slate-100 space-y-4" id="admin-controls-box">
                     <div class="flex justify-between items-center">
                         <h3 class="font-bold text-slate-900 flex items-center gap-2">
@@ -119,7 +122,7 @@
                             <i class="fa-solid fa-wand-magic-sparkles"></i> Optimizar Ruta
                         </button>
                         <button onclick="exportarReporteExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md">
-                            <i class="fa-solid fa-file-excel"></i> Exportar
+                            <i class="fa-solid fa-file-excel"></i> Exportar CSV
                         </button>
                     </div>
 
@@ -130,7 +133,6 @@
                     </div>
                 </div>
 
-                <!-- Lista de Paradas -->
                 <div class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50" id="lista-paradas"></div>
             </aside>
 
@@ -171,15 +173,15 @@
 
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Fotografía Obligatoria</label>
-                    <input type="file" id="input-foto" accept="image/*" capture="environment" onchange="procesarFotoConCanvas(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-slate-200 rounded-xl p-2">
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Fotografía Obligatoria (Usa tu GPS Actual)</label>
+                    <input type="file" id="input-foto" accept="image/*" capture="environment" onchange="procesarFotoConGPSReal(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-slate-200 rounded-xl p-2">
                 </div>
 
                 <div class="relative border-2 border-dashed border-slate-300 rounded-xl p-2 text-center bg-slate-50">
                     <canvas id="canvas-preview" class="max-h-56 mx-auto rounded-lg hidden shadow-md"></canvas>
                     <div id="placeholder-foto" class="py-8 text-slate-400 text-xs">
                         <i class="fa-solid fa-image text-3xl mb-2 text-slate-300"></i>
-                        <p>Tome o suba la fotografía. Se le estampará la Fecha, Hora y Coordenadas automáticamente.</p>
+                        <p>Tome la foto. Se estampará automáticamente la fecha, hora y su **ubicación GPS real en el lugar**.</p>
                     </div>
                 </div>
 
@@ -200,22 +202,25 @@
         </div>
     </div>
 
-    <!-- MODAL HISTORIAL DE EVIDENCIAS Y FOTOS DE LLEGADA -->
+    <!-- MODAL BITÁCORA E IMPRESIÓN -->
     <div id="modal-evidencias" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center border-b pb-3">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-3 no-print">
                 <div>
                     <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
-                        <i class="fa-solid fa-images text-emerald-600"></i> Historial de Evidencias de Campo
+                        <i class="fa-solid fa-book-open text-emerald-600"></i> Bitácora Oficial de Campo
                     </h3>
-                    <p class="text-xs text-slate-500">Fotografías con marca de agua, descripción y ubicación exacta.</p>
+                    <p class="text-xs text-slate-500">Registro con fotos, marca de agua de tiempo y coordenadas reales.</p>
                 </div>
-                <button onclick="cerrarModalEvidencias()" class="text-slate-400 hover:text-slate-600 text-xl"><i class="fa-solid fa-xmark"></i></button>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow">
+                        <i class="fa-solid fa-print"></i> Imprimir Bitácora / PDF
+                    </button>
+                    <button onclick="cerrarModalEvidencias()" class="text-slate-400 hover:text-slate-600 text-xl px-2"><i class="fa-solid fa-xmark"></i></button>
+                </div>
             </div>
 
-            <div id="contenedor-grid-evidencias" class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4 p-1">
-                <!-- Se inyectan las tarjetas de fotos -->
-            </div>
+            <div id="contenedor-grid-evidencias" class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4 p-1"></div>
         </div>
     </div>
 
@@ -231,30 +236,38 @@
         let polylineRuta = null;
         let watchId = null;
 
-        let asesoresDB = {
+        const baseInicial = {
             "1596": { id: "1596", nombre: "Administrador General", rol: "admin" },
-            "1346": { id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, paradaActiva: 0, puntos: [] },
-            "7946": { id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, paradaActiva: 0, puntos: [] }
+            "1346": { 
+                id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, paradaActiva: 0, 
+                puntos: [
+                    { lat: 15.0350, lng: -91.1500, cliente: "Cliente 1 (Santa Cruz)", estado: "pendiente", nota: "", foto: "", hora: "", seq: 1 },
+                    { lat: 15.0400, lng: -91.1600, cliente: "Cliente 2 (Zona Central)", estado: "pendiente", nota: "", foto: "", hora: "", seq: 2 }
+                ] 
+            },
+            "7946": { 
+                id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, paradaActiva: 0, 
+                puntos: [
+                    { lat: 15.0280, lng: -91.1450, cliente: "Cliente 1 (Acceso Sur)", estado: "pendiente", nota: "", foto: "", hora: "", seq: 1 }
+                ] 
+            }
         };
 
-        const DB_KEY = "asesoresDB_manoamiga_v6";
+        const DB_KEY = "asesoresDB_manoamiga_v8";
+        let asesoresDB = baseInicial;
+
         if (localStorage.getItem(DB_KEY)) {
             asesoresDB = JSON.parse(localStorage.getItem(DB_KEY));
-            if (!asesoresDB["1596"]) {
-                asesoresDB["1596"] = { id: "1596", nombre: "Administrador General", rol: "admin" };
-            }
         } else {
-            localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
+            localStorage.setItem(DB_KEY, JSON.stringify(baseInicial));
         }
 
         let indexParadaSeleccionadaModal = null;
         let imagenBase64Procesada = "";
 
-        // --- VALIDACIÓN ESTRICTA DE ROL Y CLAVE ---
         function intentarLogin() {
-            const rolSeleccionado = document.getElementById("login-role").value; // "admin" o "asesor"
+            const rolSeleccionado = document.getElementById("login-role").value;
             const pass = document.getElementById("login-pass").value.trim();
-
             const cuenta = asesoresDB[pass];
 
             if (!cuenta) {
@@ -262,7 +275,6 @@
                 return;
             }
 
-            // Validar estrictamente que la clave corresponda al rol seleccionado
             if (rolSeleccionado === "admin" && cuenta.rol !== "admin") {
                 alert("⚠️ Esta clave no pertenece a un Administrador.");
                 return;
@@ -310,8 +322,10 @@
                 }
             }
 
-            inicializarMapaLeaflet();
-            renderizarListaParadas();
+            setTimeout(() => {
+                inicializarMapaLeaflet();
+                renderizarListaParadas();
+            }, 200);
         }
 
         function poblarSelectVistaAdmin() {
@@ -334,7 +348,6 @@
             actualizarDibujoRutaMapa();
         }
 
-        // --- MAPA LEAFLET ---
         function inicializarMapaLeaflet() {
             if (!map) {
                 map = L.map('map').setView([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], 14);
@@ -353,11 +366,14 @@
                     iconSize: [36, 36], iconAnchor: [18, 18]
                 });
                 marcadorMoto = L.marker([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], { icon: motoIcon }).addTo(map);
+            } else {
+                map.invalidateSize();
             }
             actualizarDibujoRutaMapa();
         }
 
         function actualizarDibujoRutaMapa() {
+            if (!map) return;
             if (polylineRuta) map.removeLayer(polylineRuta);
 
             let puntosARenderizar = [];
@@ -376,12 +392,12 @@
             }
 
             let latLngs = [[AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]];
-            puntosARenderizar.forEach(p => {
+            puntosARenderizar.forEach((p, idx) => {
                 latLngs.push([p.lat, p.lng]);
                 let colorPin = p.estado === 'completado' ? '#10b981' : (p.estado === 'incidencia' ? '#f59e0b' : '#3b82f6');
                 let pinIcon = L.divIcon({
                     className: 'custom-div-icon',
-                    html: `<div style="background-color:${colorPin};color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">${p.seq || ''}</div>`,
+                    html: `<div style="background-color:${colorPin};color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">${idx + 1}</div>`,
                     iconSize: [28, 28], iconAnchor: [14, 14]
                 });
                 L.marker([p.lat, p.lng], { icon: pinIcon }).addTo(map).bindPopup(`<b>${p.cliente}</b><br>Estado: ${p.estado}`);
@@ -608,7 +624,6 @@
             }
         }
 
-        // --- MANEJO DE FOTO + CANVAS CON FECHA/HORA/GPS ---
         function abrirModalVisita(idx) {
             indexParadaSeleccionadaModal = idx;
             document.getElementById("input-avance").value = "";
@@ -623,42 +638,62 @@
             document.getElementById("modal-visita").classList.add("hidden");
         }
 
-        function procesarFotoConCanvas(event) {
+        // --- FOTO CON COORDENADA GPS REAL EN TIEMPO REAL ---
+        function procesarFotoConGPSReal(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.getElementById("canvas-preview");
-                    const ctx = canvas.getContext("2d");
-
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
-
-                    const ahora = new Date();
-                    const fechaHora = ahora.toLocaleString('es-GT', { dateStyle: 'short', timeStyle: 'medium' });
-                    
-                    let paradaTarget = usuarioActual.puntos[indexParadaSeleccionadaModal];
-                    const textoMarcaAgua = `Mano Amiga | ${fechaHora} | Lat: ${paradaTarget.lat.toFixed(4)}, Lng: ${paradaTarget.lng.toFixed(4)}`;
-
-                    ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
-                    ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
-
-                    ctx.fillStyle = "#ffffff";
-                    ctx.font = "bold 20px sans-serif";
-                    ctx.fillText(textoMarcaAgua, 20, canvas.height - 22);
-
-                    imagenBase64Procesada = canvas.toDataURL("image/jpeg", 0.85);
-                    
-                    document.getElementById("placeholder-foto").classList.add("hidden");
-                    canvas.classList.remove("hidden");
-                }
-                img.src = e.target.result;
+            // Intentar obtener la geolocalización actual exacta del dispositivo
+            if (!navigator.geolocation) {
+                alert("Su navegador no soporta geolocalización.");
+                return;
             }
-            reader.readAsDataURL(file);
+
+            alert("Obteniendo su ubicación GPS real en tiempo real para estampar en la foto...");
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const latReal = position.coords.latitude;
+                    const lngReal = position.coords.longitude;
+
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() {
+                            const canvas = document.getElementById("canvas-preview");
+                            const ctx = canvas.getContext("2d");
+
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0);
+
+                            const ahora = new Date();
+                            const fechaHora = ahora.toLocaleString('es-GT', { dateStyle: 'short', timeStyle: 'medium' });
+                            
+                            // Marca de agua con GPS REAL del dispositivo
+                            const textoMarcaAgua = `Mano Amiga | ${fechaHora} | GPS Real: ${latReal.toFixed(5)}, ${lngReal.toFixed(5)}`;
+
+                            ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+                            ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+
+                            ctx.fillStyle = "#ffffff";
+                            ctx.font = "bold 20px sans-serif";
+                            ctx.fillText(textoMarcaAgua, 20, canvas.height - 22);
+
+                            imagenBase64Procesada = canvas.toDataURL("image/jpeg", 0.85);
+                            
+                            document.getElementById("placeholder-foto").classList.add("hidden");
+                            canvas.classList.remove("hidden");
+                        }
+                        img.src = e.target.result;
+                    }
+                    reader.readAsDataURL(file);
+                },
+                (error) => {
+                    alert("⚠️ No se pudo obtener la ubicación GPS real. Asegúrese de permitir el acceso al GPS en su teléfono.");
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
         }
 
         function guardarVisitaExitosa() {
@@ -668,7 +703,7 @@
                 return;
             }
             if (!imagenBase64Procesada) {
-                alert("⚠️ Debe tomar o subir una fotografía como evidencia obligatoria.");
+                alert("⚠️ Debe tomar o subir una fotografía con GPS real como evidencia obligatoria.");
                 return;
             }
 
@@ -688,12 +723,12 @@
             cerrarModalVisita();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("¡Visita guardada con foto y datos de ubicación!");
+            alert("¡Visita guardada con foto, marca de tiempo y GPS real!");
         }
 
         function marcarIncidenciaAusente() {
             if (!imagenBase64Procesada) {
-                alert("⚠️ Debe tomar o subir una fotografía como evidencia de la llegada.");
+                alert("⚠️ Debe tomar o subir una fotografía con GPS real como evidencia.");
                 return;
             }
 
@@ -716,7 +751,7 @@
             alert("Incidencia marcada.");
         }
 
-        // --- VER EVIDENCIAS / HISTORIAL DE FOTOS ---
+        // --- BITÁCORA E IMPRESIÓN ---
         function abrirModalEvidencias() {
             const grid = document.getElementById("contenedor-grid-evidencias");
             grid.innerHTML = "";
@@ -739,21 +774,21 @@
             } else {
                 registrosConFoto.forEach(reg => {
                     let card = document.createElement("div");
-                    card.className = "bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col";
+                    card.className = "bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col page-break";
                     card.innerHTML = `
                         <div class="p-3 bg-slate-900 text-white flex justify-between items-center text-xs">
-                            <span class="font-bold"><i class="fa-solid fa-user-check text-blue-400"></i> ${reg.asesorNombre}</span>
-                            <span class="text-slate-400 font-mono">${reg.hora}</span>
+                            <span class="font-bold"><i class="fa-solid fa-user-check text-blue-400"></i> Asesor: ${reg.asesorNombre}</span>
+                            <span class="text-slate-300 font-mono">${reg.hora}</span>
                         </div>
-                        <img src="${reg.foto}" class="w-full h-48 object-cover border-b border-slate-200">
+                        <img src="${reg.foto}" class="w-full h-56 object-cover border-b border-slate-200">
                         <div class="p-4 space-y-2 flex-1 flex flex-col justify-between">
                             <div>
                                 <span class="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded ${reg.estado==='completado'?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}">${reg.estado}</span>
                                 <h4 class="font-bold text-slate-900 text-sm mt-1">${reg.cliente}</h4>
-                                <p class="text-xs text-slate-600 mt-2 bg-white p-2.5 rounded-xl border border-slate-200"><strong>Descripción:</strong> ${reg.nota}</p>
+                                <p class="text-xs text-slate-700 mt-2 bg-white p-3 rounded-xl border border-slate-200"><strong>Descripción:</strong> ${reg.nota}</p>
                             </div>
                             <div class="pt-2 border-t border-slate-200 flex justify-between items-center text-xs text-slate-500 font-mono">
-                                <span>📍 Lat: ${reg.lat.toFixed(4)}, Lng: ${reg.lng.toFixed(4)}</span>
+                                <span>📍 Lat/Lng planificada: ${reg.lat.toFixed(4)}, ${reg.lng.toFixed(4)}</span>
                                 <a href="https://www.google.com/maps?q=${reg.lat},${reg.lng}" target="_blank" class="text-blue-600 font-bold hover:underline">Ver Mapa</a>
                             </div>
                         </div>
@@ -769,7 +804,6 @@
             document.getElementById("modal-evidencias").classList.add("hidden");
         }
 
-        // --- GPS ---
         function activarGPSReal() {
             if (!navigator.geolocation) return;
             watchId = navigator.geolocation.watchPosition(
@@ -808,7 +842,7 @@
             let url = URL.createObjectURL(blob);
             let a = document.createElement('a');
             a.setAttribute('href', url);
-            a.setAttribute('download', `Reporte_General_Rutas_${new Date().toISOString().slice(0,10)}.csv`);
+            a.setAttribute('download', `Bitacora_Rutas_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
