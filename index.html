@@ -224,13 +224,12 @@
         </div>
     </div>
 
-    <!-- LOGICA SCRIPT CON JSONBIN CLOUD SYNC -->
+    <!-- LOGICA SCRIPT -->
     <script>
         const AGENCIA_CENTRAL = { lat: 15.032100742090686, lng: -91.15299656594703 };
         
-        // Configuración de JSONBin.io (Master Key proporcionada)
         const JSONBIN_MASTER_KEY = "$2a$10$Yz5zDmv0.jYBbwhGg8pqQeanepEv9qArD7RA6/sQy5vS3mMHZQ75q";
-        let jsonBinId = localStorage.getItem("manoamiga_bin_id") || ""; // Se creará automáticamente en la nube
+        let jsonBinId = localStorage.getItem("manoamiga_bin_id") || "";
 
         let usuarioActual = null;
         let rolActual = null;
@@ -264,7 +263,6 @@
 
         let asesoresDB = baseInicial;
 
-        // --- FUNCIONES DE SINCRONIZACIÓN EN LA NUBE (JSONBin) ---
         async function sincronizarDesdeNube() {
             if (!jsonBinId) return;
             try {
@@ -273,11 +271,12 @@
                 });
                 if (response.ok) {
                     let data = await response.json();
-                    if (data && data.record) {
+                    if (data && data.record && data.record["1596"]) {
                         asesoresDB = data.record;
                         if (usuarioActual && asesoresDB[usuarioActual.id]) {
                             usuarioActual = asesoresDB[usuarioActual.id];
                         }
+                        if (rolActual === "admin") poblarSelectVistaAdmin();
                         renderizarListaParadas();
                         actualizarDibujoRutaMapa();
                     }
@@ -290,7 +289,6 @@
         async function guardarEnNube() {
             try {
                 if (!jsonBinId) {
-                    // Crear un nuevo Bin en la nube si aún no existe
                     let response = await fetch("https://api.jsonbin.io/v3/b", {
                         method: "POST",
                         headers: {
@@ -298,15 +296,15 @@
                             "X-Master-Key": JSONBIN_MASTER_KEY,
                             "X-Bin-Name": "ManoAmiga_Rutas_DB"
                         },
-                        body: JSON.stringify(asesoresDB)
+                        body: JSON.stringify(baseInicial)
                     });
                     if (response.ok) {
                         let resData = await response.json();
                         jsonBinId = resData.metadata.id;
                         localStorage.setItem("manoamiga_bin_id", jsonBinId);
+                        asesoresDB = baseInicial;
                     }
                 } else {
-                    // Actualizar el Bin existente
                     await fetch(`https://api.jsonbin.io/v3/b/${jsonBinId}`, {
                         method: "PUT",
                         headers: {
@@ -321,11 +319,16 @@
             }
         }
 
-        // Cargar base inicial local o en la nube al abrir
         async function inicializarBaseDatos() {
             if (jsonBinId) {
                 await sincronizarDesdeNube();
+                // Si el bin descargado está vacío o no tiene usuarios, reinicializarlo
+                if (!asesoresDB || !asesoresDB["1596"]) {
+                    asesoresDB = baseInicial;
+                    await guardarEnNube();
+                }
             } else {
+                asesoresDB = baseInicial;
                 await guardarEnNube();
             }
         }
@@ -337,94 +340,9 @@
             const cuenta = asesoresDB[pass];
 
             if (!cuenta) {
-                alert("PIN o Contraseña incorrecta.");
+                alert("PIN o Contraseña incorrecta. Verifique sus datos.");
                 return;
             }
 
             if (rolSeleccionado === "admin" && cuenta.rol !== "admin") {
-                alert("⚠️ Esta clave no pertenece a un Administrador.");
-                return;
-            }
-
-            if (rolSeleccionado === "asesor" && cuenta.rol !== "asesor") {
-                alert("⚠️ Esta clave pertenece al Administrador. Seleccione 'Administrador' en el menú.");
-                return;
-            }
-
-            rolActual = cuenta.rol;
-            usuarioActual = cuenta;
-            iniciarSistemaApp();
-        }
-
-        function cerrarSesion() {
-            if (watchId) navigator.geolocation.clearWatch(watchId);
-            if (intervaloCloudSync) clearInterval(intervaloCloudSync);
-            document.getElementById("app-container").classList.add("hidden");
-            document.getElementById("login-screen").classList.remove("hidden");
-            document.getElementById("login-pass").value = "";
-        }
-
-        function iniciarSistemaApp() {
-            document.getElementById("login-screen").classList.add("hidden");
-            document.getElementById("app-container").classList.remove("hidden");
-            document.getElementById("input-coordenadas").value = "";
-
-            if (rolActual === "admin") {
-                document.getElementById("header-title").innerText = "Panel Gerencial - Supervisión Total";
-                document.getElementById("user-badge").innerText = "Administrador (1596)";
-                document.getElementById("admin-controls-box").style.display = "block";
-                document.getElementById("admin-selector-box").style.display = "block";
-                document.getElementById("admin-lock-container").style.display = "block";
-                poblarSelectVistaAdmin();
-            } else {
-                document.getElementById("header-title").innerText = `Ruta de Campo - ${usuarioActual.nombre}`;
-                document.getElementById("user-badge").innerText = `PIN: ${usuarioActual.id}`;
-                document.getElementById("admin-selector-box").style.display = "none";
-                document.getElementById("admin-lock-container").style.display = "none";
-                
-                if (usuarioActual.cerrado) {
-                    document.getElementById("admin-controls-box").style.display = "none";
-                } else {
-                    document.getElementById("admin-controls-box").style.display = "block";
-                }
-            }
-
-            setTimeout(() => {
-                inicializarMapaLeaflet();
-                renderizarListaParadas();
-            }, 200);
-
-            // Sincronizar automáticamente cada 5 segundos desde la nube para ver posiciones en tiempo real
-            intervaloCloudSync = setInterval(async () => {
-                await sincronizarDesdeNube();
-            }, 5000);
-        }
-
-        function poblarSelectVistaAdmin() {
-            const select = document.getElementById("select-vista-asesor");
-            select.innerHTML = `<option value="todos">🌍 Ver Todos los Asesores en simultáneo</option>`;
-            Object.keys(asesoresDB).forEach(pin => {
-                let usr = asesoresDB[pin];
-                if (usr.rol === "asesor") {
-                    let opt = document.createElement("option");
-                    opt.value = pin;
-                    opt.innerText = usr.nombre + ` (PIN: ${pin})`;
-                    select.appendChild(opt);
-                }
-            });
-        }
-
-        function cambiarVistaAdmin() {
-            vistaAdminSeleccionada = document.getElementById("select-vista-asesor").value;
-            renderizarListaParadas();
-            actualizarDibujoRutaMapa();
-        }
-
-        function inicializarMapaLeaflet() {
-            if (!map) {
-                map = L.map('map').setView([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], 14);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-
-                let agIcon = L.divIcon({
-                    className: 'custom-div-icon',
-                    html: `<div style="background-color:#1e293b;color:white;padding:8px;border-radius:50%;text-align:center;"><i class="fa-solid fa-building-columns"></i></div>`,
+                alert("⚠️ Esta
