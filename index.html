@@ -224,25 +224,30 @@
         </div>
     </div>
 
-    <!-- LOGICA SCRIPT -->
+    <!-- LOGICA SCRIPT CON JSONBIN CLOUD SYNC -->
     <script>
         const AGENCIA_CENTRAL = { lat: 15.032100742090686, lng: -91.15299656594703 };
+        
+        // Configuración de JSONBin.io (Master Key proporcionada)
+        const JSONBIN_MASTER_KEY = "$2a$10$Yz5zDmv0.jYBbwhGg8pqQeanepEv9qArD7RA6/sQy5vS3mMHZQ75q";
+        let jsonBinId = localStorage.getItem("manoamiga_bin_id") || ""; // Se creará automáticamente en la nube
 
         let usuarioActual = null;
         let rolActual = null;
         let vistaAdminSeleccionada = "todos";
         let map = null;
-        let marcadorMoto = null;
+        let marcadoresAsesores = {};
         let polylinesAsesores = [];
         let watchId = null;
+        let intervaloCloudSync = null;
 
-        // Paleta de colores distintivos por cada asesor
         const COLORES_ASESORES = ["#2563eb", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4"];
 
         const baseInicial = {
-            "1596": { id: "1596", nombre: "Administrador General", rol: "admin", color: "#1e293b" },
+            "1596": { id: "1596", nombre: "Administrador General", rol: "admin", color: "#1e293b", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng },
             "1346": { 
                 id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#2563eb",
+                lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng,
                 puntos: [
                     { lat: 15.0350, lng: -91.1500, cliente: "Cliente 1 (Santa Cruz)", estado: "pendiente", nota: "", foto: "", hora: "", seq: 1 },
                     { lat: 15.0400, lng: -91.1600, cliente: "Cliente 2 (Zona Central)", estado: "pendiente", nota: "", foto: "", hora: "", seq: 2 }
@@ -250,23 +255,81 @@
             },
             "7946": { 
                 id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#10b981",
+                lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng,
                 puntos: [
                     { lat: 15.0280, lng: -91.1450, cliente: "Cliente 1 (Acceso Sur)", estado: "pendiente", nota: "", foto: "", hora: "", seq: 1 }
                 ] 
             }
         };
 
-        const DB_KEY = "asesoresDB_manoamiga_v9";
         let asesoresDB = baseInicial;
 
-        if (localStorage.getItem(DB_KEY)) {
-            asesoresDB = JSON.parse(localStorage.getItem(DB_KEY));
-        } else {
-            localStorage.setItem(DB_KEY, JSON.stringify(baseInicial));
+        // --- FUNCIONES DE SINCRONIZACIÓN EN LA NUBE (JSONBin) ---
+        async function sincronizarDesdeNube() {
+            if (!jsonBinId) return;
+            try {
+                let response = await fetch(`https://api.jsonbin.io/v3/b/${jsonBinId}/latest`, {
+                    headers: { "X-Master-Key": JSONBIN_MASTER_KEY }
+                });
+                if (response.ok) {
+                    let data = await response.json();
+                    if (data && data.record) {
+                        asesoresDB = data.record;
+                        if (usuarioActual && asesoresDB[usuarioActual.id]) {
+                            usuarioActual = asesoresDB[usuarioActual.id];
+                        }
+                        renderizarListaParadas();
+                        actualizarDibujoRutaMapa();
+                    }
+                }
+            } catch (e) {
+                console.warn("Error de sincronización con la nube:", e);
+            }
         }
 
-        let indexParadaSeleccionadaModal = null;
-        let imagenBase64Procesada = "";
+        async function guardarEnNube() {
+            try {
+                if (!jsonBinId) {
+                    // Crear un nuevo Bin en la nube si aún no existe
+                    let response = await fetch("https://api.jsonbin.io/v3/b", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-Master-Key": JSONBIN_MASTER_KEY,
+                            "X-Bin-Name": "ManoAmiga_Rutas_DB"
+                        },
+                        body: JSON.stringify(asesoresDB)
+                    });
+                    if (response.ok) {
+                        let resData = await response.json();
+                        jsonBinId = resData.metadata.id;
+                        localStorage.setItem("manoamiga_bin_id", jsonBinId);
+                    }
+                } else {
+                    // Actualizar el Bin existente
+                    await fetch(`https://api.jsonbin.io/v3/b/${jsonBinId}`, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-Master-Key": JSONBIN_MASTER_KEY
+                        },
+                        body: JSON.stringify(asesoresDB)
+                    });
+                }
+            } catch (e) {
+                console.warn("Error al guardar en la nube:", e);
+            }
+        }
+
+        // Cargar base inicial local o en la nube al abrir
+        async function inicializarBaseDatos() {
+            if (jsonBinId) {
+                await sincronizarDesdeNube();
+            } else {
+                await guardarEnNube();
+            }
+        }
+        inicializarBaseDatos();
 
         function intentarLogin() {
             const rolSeleccionado = document.getElementById("login-role").value;
@@ -295,6 +358,7 @@
 
         function cerrarSesion() {
             if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (intervaloCloudSync) clearInterval(intervaloCloudSync);
             document.getElementById("app-container").classList.add("hidden");
             document.getElementById("login-screen").classList.remove("hidden");
             document.getElementById("login-pass").value = "";
@@ -329,6 +393,11 @@
                 inicializarMapaLeaflet();
                 renderizarListaParadas();
             }, 200);
+
+            // Sincronizar automáticamente cada 5 segundos desde la nube para ver posiciones en tiempo real
+            intervaloCloudSync = setInterval(async () => {
+                await sincronizarDesdeNube();
+            }, 5000);
         }
 
         function poblarSelectVistaAdmin() {
@@ -359,514 +428,3 @@
                 let agIcon = L.divIcon({
                     className: 'custom-div-icon',
                     html: `<div style="background-color:#1e293b;color:white;padding:8px;border-radius:50%;text-align:center;"><i class="fa-solid fa-building-columns"></i></div>`,
-                    iconSize: [36, 36], iconAnchor: [18, 18]
-                });
-                L.marker([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], { icon: agIcon }).addTo(map).bindPopup("<b>Agencia Central</b>");
-
-                let motoIcon = L.divIcon({
-                    className: 'custom-div-icon',
-                    html: `<div style="background-color:#2563eb;color:white;padding:8px;border-radius:50%;text-align:center;"><i class="fa-solid fa-motorcycle"></i></div>`,
-                    iconSize: [36, 36], iconAnchor: [18, 18]
-                });
-                marcadorMoto = L.marker([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], { icon: motoIcon }).addTo(map);
-            } else {
-                map.invalidateSize();
-            }
-            actualizarDibujoRutaMapa();
-        }
-
-        // --- MAPA CON COLORES DIFERENCIADOS POR ASESOR ---
-        function actualizarDibujoRutaMapa() {
-            if (!map) return;
-            
-            // Limpiar líneas anteriores
-            polylinesAsesores.forEach(l => map.removeLayer(l));
-            polylinesAsesores = [];
-
-            let asesoresARenderizar = [];
-            if (rolActual === "asesor") {
-                asesoresARenderizar = [usuarioActual];
-            } else {
-                if (vistaAdminSeleccionada === "todos") {
-                    Object.keys(asesoresDB).forEach(pin => {
-                        if (asesoresDB[pin].rol === "asesor") asesoresARenderizar.push(asesoresDB[pin]);
-                    });
-                } else if (asesoresDB[vistaAdminSeleccionada]) {
-                    asesoresARenderizar = [asesoresDB[vistaAdminSeleccionada]];
-                }
-            }
-
-            asesoresARenderizar.forEach((usr, index) => {
-                let colorAsesor = usr.color || COLORES_ASESORES[index % COLORES_ASESORES.length];
-                let latLngs = [[AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]];
-
-                usr.puntos.forEach((p, idx) => {
-                    latLngs.push([p.lat, p.lng]);
-                    let colorPin = p.estado === 'completado' ? '#10b981' : (p.estado === 'incidencia' ? '#f59e0b' : colorAsesor);
-                    
-                    let pinIcon = L.divIcon({
-                        className: 'custom-div-icon',
-                        html: `<div style="background-color:${colorPin};color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${idx + 1}</div>`,
-                        iconSize: [28, 28], iconAnchor: [14, 14]
-                    });
-                    
-                    let marker = L.marker([p.lat, p.lng], { icon: pinIcon }).addTo(map);
-                    marker.bindPopup(`<b>${usr.nombre}</b><br>${p.cliente}<br>Estado: ${p.estado}`);
-                    polylinesAsesores.push(marker);
-                });
-
-                latLngs.push([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]);
-                let polyline = L.polyline(latLngs, { color: colorAsesor, weight: 4, opacity: 0.8, dashArray: '6, 6' }).addTo(map);
-                polylinesAsesores.push(polyline);
-            });
-        }
-
-        function registrarNuevoAsesorAdmin() {
-            const nombre = document.getElementById("nuevo-nombre-asesor").value.trim();
-            const pin = document.getElementById("nuevo-pin-asesor").value.trim();
-
-            if (!nombre || !pin) {
-                alert("Ingrese el nombre y el PIN de 4 dígitos.");
-                return;
-            }
-            if (asesoresDB[pin]) {
-                alert("Este PIN ya está registrado.");
-                return;
-            }
-
-            let colorAsignado = COLORES_ASESORES[Object.keys(asesoresDB).length % COLORES_ASESORES.length];
-            asesoresDB[pin] = { id: pin, nombre: nombre, rol: "asesor", cerrado: false, paradaActiva: 0, color: colorAsasignado, puntos: [] };
-            localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
-            document.getElementById("nuevo-nombre-asesor").value = "";
-            document.getElementById("nuevo-pin-asesor").value = "";
-            poblarSelectVistaAdmin();
-            alert(`Asesor ${nombre} guardado.`);
-        }
-
-        // --- AGREGAR NUEVAS COORDENADAS SIN BORRAR LAS ANTERIORES Y REFORMULAR ---
-        function optimizarYGuardarRuta() {
-            let targetAsesor = usuarioActual;
-            if (rolActual === "admin") {
-                if (vistaAdminSeleccionada === "todos") {
-                    alert("Seleccione un asesor específico en el menú superior para agregar coordenadas.");
-                    return;
-                }
-                targetAsesor = asesoresDB[vistaAdminSeleccionada];
-            }
-
-            if (targetAsesor.cerrado) {
-                alert("⚠️ Las coordenadas de esta ruta están cerradas por el Administrador.");
-                return;
-            }
-
-            const textoCoords = document.getElementById("input-coordenadas").value.trim();
-            if (!textoCoords) {
-                alert("Ingrese al menos una coordenada.");
-                return;
-            }
-
-            let lineas = textoCoords.split("\n");
-            let nuevosPuntosIngresados = [];
-            lineas.forEach((linea, idx) => {
-                let partes = linea.split(",");
-                if (partes.length >= 2) {
-                    let lat = parseFloat(partes[0].trim());
-                    let lng = parseFloat(partes[1].trim());
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        nuevosPuntosIngresados.push({
-                            lat: lat, lng: lng, cliente: `Nuevo Cliente (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
-                            estado: "pendiente", nota: "", foto: "", hora: ""
-                        });
-                    }
-                }
-            });
-
-            if (nuevosPuntosIngresados.length === 0) return;
-
-            // Conservar las paradas que ya existían (completadas, en proceso o pendientes)
-            let puntosExistentes = targetAsesor.puntos || [];
-            let todosLosPuntos = puntosExistentes.concat(nuevosPuntosIngresados);
-
-            // Reformular y optimizar toda la ruta respetando las ya completadas
-            let rutaOptimizadaFinal = [];
-            let noVisitados = [...todosLosPuntos];
-            let actual = AGENCIA_CENTRAL;
-
-            while (noVisitados.length > 0) {
-                let masCercanoIdx = 0;
-                let menorDistancia = calcularDistancia(actual.lat, actual.lng, noVisitados[0].lat, noVisitados[0].lng);
-
-                for (let i = 1; i < noVisitados.length; i++) {
-                    let dist = calcularDistancia(actual.lat, actual.lng, noVisitados[i].lat, noVisitados[i].lng);
-                    if (dist < menorDistancia) {
-                        menorDistancia = dist;
-                        masCercanoIdx = i;
-                    }
-                }
-
-                actual = noVisitados[masCercanoIdx];
-                actual.seq = rutaOptimizadaFinal.length + 1;
-                rutaOptimizadaFinal.push(actual);
-                noVisitados.splice(masCercanoIdx, 1);
-            }
-
-            targetAsesor.puntos = rutaOptimizadaFinal;
-            localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
-            
-            document.getElementById("input-coordenadas").value = "";
-            renderizarListaParadas();
-            actualizarDibujoRutaMapa();
-            alert("¡Nuevas coordenadas agregadas y ruta reformulada sin perder los registros anteriores!");
-        }
-
-        function toggleCierreCoordenadas() {
-            if (vistaAdminSeleccionada === "todos") {
-                alert("Seleccione un asesor específico.");
-                return;
-            }
-            let targetAsesor = asesoresDB[vistaAdminSeleccionada];
-            targetAsesor.cerrado = !targetAsesor.cerrado;
-            localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
-            actualizarBotonCierreAdmin(targetAsesor.cerrado);
-        }
-
-        function actualizarBotonCierreAdmin(cerrado) {
-            const btn = document.getElementById("btn-toggle-lock");
-            const badge = document.getElementById("lock-status-badge");
-            if (cerrado) {
-                btn.innerHTML = `<i class="fa-solid fa-lock-open"></i> Abrir Edición`;
-                badge.innerText = "Ruta Cerrada";
-                badge.className = "text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded font-bold";
-            } else {
-                btn.innerHTML = `<i class="fa-solid fa-lock"></i> Cerrar Edición`;
-                badge.innerText = "Ruta Abierta";
-                badge.className = "text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold";
-            }
-        }
-
-        function calcularDistancia(lat1, lon1, lat2, lon2) {
-            let R = 6371;
-            let dLat = (lat2 - lat1) * Math.PI / 180;
-            let dLon = (lon2 - lon1) * Math.PI / 180;
-            let a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                    Math.sin(dLon/2) * Math.sin(dLon/2);
-            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-        }
-
-        function renderizarListaParadas() {
-            const contenedor = document.getElementById("lista-paradas");
-            contenedor.innerHTML = "";
-
-            let puntosAMostrar = [];
-            let paradaActivaIdx = 0;
-
-            if (rolActual === "asesor") {
-                puntosAMostrar = usuarioActual.puntos;
-                paradaActivaIdx = usuarioActual.paradaActiva;
-            } else {
-                if (vistaAdminSeleccionada === "todos") {
-                    Object.keys(asesoresDB).forEach(pin => {
-                        let usr = asesoresDB[pin];
-                        if (usr.rol === "asesor") {
-                            usr.puntos.forEach(p => {
-                                p.nombreAsesorPropietario = usr.nombre;
-                                puntosAMostrar.push(p);
-                            });
-                        }
-                    });
-                } else {
-                    let usr = asesoresDB[vistaAdminSeleccionada];
-                    if (usr) {
-                        puntosAMostrar = usr.puntos;
-                        paradaActivaIdx = usr.paradaActiva;
-                        actualizarBotonCierreAdmin(usr.cerrado);
-                    }
-                }
-            }
-
-            if (puntosAMostrar.length === 0) {
-                contenedor.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs"><i class="fa-solid fa-route text-3xl mb-2"></i><p>Sin paradas registradas.</p></div>`;
-                return;
-            }
-
-            puntosAMostrar.forEach((p, idx) => {
-                p.seq = idx + 1;
-                let esActiva = (idx === paradaActivaIdx && rolActual === "asesor");
-                let estaBloqueada = (idx > paradaActivaIdx && rolActual === "asesor");
-
-                let badgeEstado = '';
-                if (p.estado === 'completado') badgeEstado = `<span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-bold">Completado</span>`;
-                else if (p.estado === 'incidencia') badgeEstado = `<span class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded font-bold">Incidencia</span>`;
-                else if (esActiva) badgeEstado = `<span class="bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded font-bold">Activa</span>`;
-                else badgeEstado = `<span class="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded font-bold">Bloqueado</span>`;
-
-                let botonEliminarAdmin = "";
-                if (rolActual === "admin") {
-                    botonEliminarAdmin = `<button onclick="eliminarParadaAdmin('${vistaAdminSeleccionada}', ${idx})" class="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition"><i class="fa-solid fa-trash"></i></button>`;
-                }
-
-                let div = document.createElement("div");
-                div.className = `p-4 rounded-xl border transition duration-200 ${esActiva ? 'border-blue-500 bg-blue-50/50 shadow-md' : 'border-slate-200 bg-white'}`;
-                
-                div.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-xs font-black text-slate-500">Parada #${p.seq} ${p.nombreAsesorPropietario ? '('+p.nombreAsesorPropietario+')' : ''}</span>
-                        ${badgeEstado}
-                    </div>
-                    <h4 class="font-bold text-slate-800 text-sm mb-1">${p.cliente}</h4>
-                    <div class="flex justify-between items-center mb-3">
-                        <p class="text-[11px] text-slate-400 font-mono">Lat: ${p.lat.toFixed(4)}, Lng: ${p.lng.toFixed(4)}</p>
-                        ${botonEliminarAdmin}
-                    </div>
-                    
-                    <div class="flex gap-2">
-                        <a href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}" target="_blank" 
-                           class="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-center py-2 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${estaBloqueada ? 'opacity-50 pointer-events-none' : ''}">
-                            <i class="fa-solid fa-diamond-turn-right"></i> Maps
-                        </a>
-                        <button onclick="abrirModalVisita(${idx})" 
-                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${estaBloqueada ? 'opacity-50 pointer-events-none' : ''} ${rolActual==='admin' ? 'hidden':''}">
-                            <i class="fa-solid fa-camera"></i> Registrar
-                        </button>
-                    </div>
-                `;
-                contenedor.appendChild(div);
-            });
-        }
-
-        function eliminarParadaAdmin(pinAsesor, index) {
-            if (pinAsesor === "todos") {
-                alert("Seleccione un asesor en específico en el menú superior.");
-                return;
-            }
-            if (confirm("¿Eliminar esta parada?")) {
-                asesoresDB[pinAsesor].puntos.splice(index, 1);
-                localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
-                renderizarListaParadas();
-                actualizarDibujoRutaMapa();
-            }
-        }
-
-        function abrirModalVisita(idx) {
-            indexParadaSeleccionadaModal = idx;
-            document.getElementById("input-avance").value = "";
-            document.getElementById("input-foto").value = "";
-            document.getElementById("canvas-preview").classList.add("hidden");
-            document.getElementById("placeholder-foto").classList.remove("hidden");
-            imagenBase64Procesada = "";
-            document.getElementById("modal-visita").classList.remove("hidden");
-        }
-
-        function cerrarModalVisita() {
-            document.getElementById("modal-visita").classList.add("hidden");
-        }
-
-        function procesarFotoConGPSReal(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            if (!navigator.geolocation) {
-                alert("Su navegador no soporta geolocalización.");
-                return;
-            }
-
-            alert("Obteniendo su ubicación GPS real en tiempo real para estampar en la foto...");
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const latReal = position.coords.latitude;
-                    const lngReal = position.coords.longitude;
-
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const img = new Image();
-                        img.onload = function() {
-                            const canvas = document.getElementById("canvas-preview");
-                            const ctx = canvas.getContext("2d");
-
-                            canvas.width = img.width;
-                            canvas.height = img.height;
-                            ctx.drawImage(img, 0, 0);
-
-                            const ahora = new Date();
-                            const fechaHora = ahora.toLocaleString('es-GT', { dateStyle: 'short', timeStyle: 'medium' });
-                            
-                            const textoMarcaAgua = `Mano Amiga | ${fechaHora} | GPS Real: ${latReal.toFixed(5)}, ${lngReal.toFixed(5)}`;
-
-                            ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
-                            ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
-
-                            ctx.fillStyle = "#ffffff";
-                            ctx.font = "bold 20px sans-serif";
-                            ctx.fillText(textoMarcaAgua, 20, canvas.height - 22);
-
-                            imagenBase64Procesada = canvas.toDataURL("image/jpeg", 0.85);
-                            
-                            document.getElementById("placeholder-foto").classList.add("hidden");
-                            canvas.classList.remove("hidden");
-                        }
-                        img.src = e.target.result;
-                    }
-                    reader.readAsDataURL(file);
-                },
-                (error) => {
-                    alert("⚠️ No se pudo obtener la ubicación GPS real. Asegúrese de permitir el acceso al GPS en su teléfono.");
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
-        }
-
-        function guardarVisitaExitosa() {
-            const nota = document.getElementById("input-avance").value.trim();
-            if (!nota) {
-                alert("Escriba la descripción del avance.");
-                return;
-            }
-            if (!imagenBase64Procesada) {
-                alert("⚠️ Debe tomar o subir una fotografía con GPS real como evidencia obligatoria.");
-                return;
-            }
-
-            let puntos = usuarioActual.puntos;
-            puntos[indexParadaSeleccionadaModal].estado = "completado";
-            puntos[indexParadaSeleccionadaModal].nota = nota;
-            puntos[indexParadaSeleccionadaModal].foto = imagenBase64Procesada;
-            puntos[indexParadaSeleccionadaModal].hora = new Date().toLocaleString();
-
-            if (usuarioActual.paradaActiva === indexParadaSeleccionadaModal) {
-                usuarioActual.paradaActiva += 1;
-            }
-
-            asesoresDB[usuarioActual.id] = usuarioActual;
-            localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
-
-            cerrarModalVisita();
-            renderizarListaParadas();
-            actualizarDibujoRutaMapa();
-            alert("¡Visita guardada con foto, marca de tiempo y GPS real!");
-        }
-
-        function marcarIncidenciaAusente() {
-            if (!imagenBase64Procesada) {
-                alert("⚠️ Debe tomar o subir una fotografía con GPS real como evidencia.");
-                return;
-            }
-
-            let puntos = usuarioActual.puntos;
-            puntos[indexParadaSeleccionadaModal].estado = "incidencia";
-            puntos[indexParadaSeleccionadaModal].nota = "Cliente Ausente";
-            puntos[indexParadaSeleccionadaModal].foto = imagenBase64Procesada;
-            puntos[indexParadaSeleccionadaModal].hora = new Date().toLocaleString();
-
-            if (usuarioActual.paradaActiva === indexParadaSeleccionadaModal) {
-                usuarioActual.paradaActiva += 1;
-            }
-
-            asesoresDB[usuarioActual.id] = usuarioActual;
-            localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
-
-            cerrarModalVisita();
-            renderizarListaParadas();
-            actualizarDibujoRutaMapa();
-            alert("Incidencia marcada.");
-        }
-
-        function abrirModalEvidencias() {
-            const grid = document.getElementById("contenedor-grid-evidencias");
-            grid.innerHTML = "";
-
-            let registrosConFoto = [];
-
-            Object.keys(asesoresDB).forEach(pin => {
-                let usr = asesoresDB[pin];
-                if (usr.rol === "asesor") {
-                    usr.puntos.forEach(p => {
-                        if (p.foto) {
-                            registrosConFoto.push({ ...p, asesorNombre: usr.nombre });
-                        }
-                    });
-                }
-            });
-
-            if (registrosConFoto.length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 text-sm"><i class="fa-solid fa-camera text-4xl mb-2"></i><p>Aún no hay visitas con fotografía registradas.</p></div>`;
-            } else {
-                registrosConFoto.forEach(reg => {
-                    let card = document.createElement("div");
-                    card.className = "bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col page-break";
-                    card.innerHTML = `
-                        <div class="p-3 bg-slate-900 text-white flex justify-between items-center text-xs">
-                            <span class="font-bold"><i class="fa-solid fa-user-check text-blue-400"></i> Asesor: ${reg.asesorNombre}</span>
-                            <span class="text-slate-300 font-mono">${reg.hora}</span>
-                        </div>
-                        <img src="${reg.foto}" class="w-full h-56 object-cover border-b border-slate-200">
-                        <div class="p-4 space-y-2 flex-1 flex flex-col justify-between">
-                            <div>
-                                <span class="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded ${reg.estado==='completado'?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}">${reg.estado}</span>
-                                <h4 class="font-bold text-slate-900 text-sm mt-1">${reg.cliente}</h4>
-                                <p class="text-xs text-slate-700 mt-2 bg-white p-3 rounded-xl border border-slate-200"><strong>Descripción:</strong> ${reg.nota}</p>
-                            </div>
-                            <div class="pt-2 border-t border-slate-200 flex justify-between items-center text-xs text-slate-500 font-mono">
-                                <span>📍 Lat/Lng planificada: ${reg.lat.toFixed(4)}, ${reg.lng.toFixed(4)}</span>
-                                <a href="https://www.google.com/maps?q=${reg.lat},${reg.lng}" target="_blank" class="text-blue-600 font-bold hover:underline">Ver Mapa</a>
-                            </div>
-                        </div>
-                    `;
-                    grid.appendChild(card);
-                });
-            }
-
-            document.getElementById("modal-evidencias").classList.remove("hidden");
-        }
-
-        function cerrarModalEvidencias() {
-            document.getElementById("modal-evidencias").classList.add("hidden");
-        }
-
-        function activarGPSReal() {
-            if (!navigator.geolocation) return;
-            watchId = navigator.geolocation.watchPosition(
-                (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-                    const velMs = pos.coords.speed || 0;
-                    document.getElementById("waze-speed").innerText = (velMs * 3.6).toFixed(1);
-                    marcadorMoto.setLatLng([lat, lng]);
-
-                    let puntos = usuarioActual ? usuarioActual.puntos : [];
-                    let paradaActivaIdx = usuarioActual ? usuarioActual.paradaActiva : 0;
-                    if (puntos[paradaActivaIdx]) {
-                        let distKm = calcularDistancia(lat, lng, puntos[paradaActivaIdx].lat, puntos[paradaActivaIdx].lng);
-                        document.getElementById("waze-distance").innerText = (distKm * 1000).toFixed(0);
-                    }
-                },
-                (err) => { console.warn("GPS: " + err.message); },
-                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-            );
-            alert("GPS en vivo activo.");
-        }
-
-        function exportarReporteExcel() {
-            let csvContent = "\uFEFFAsesor,Seq,Cliente,Estado,Hora,Nota,Latitud,Longitud\n";
-            Object.keys(asesoresDB).forEach(pin => {
-                let usr = asesoresDB[pin];
-                if (usr.rol === "asesor") {
-                    usr.puntos.forEach(p => {
-                        csvContent += `"${usr.nombre}","${p.seq}","${p.cliente}","${p.estado}","${p.hora || 'N/A'}","${p.nota || 'Sin observaciones'}","${p.lat}","${p.lng}"\n`;
-                    });
-                }
-            });
-
-            let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            let url = URL.createObjectURL(blob);
-            let a = document.createElement('a');
-            a.setAttribute('href', url);
-            a.setAttribute('download', `Bitacora_Rutas_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
-    </script>
-</body>
-</html>
