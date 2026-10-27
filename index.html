@@ -179,7 +179,7 @@
                     <canvas id="canvas-preview" class="max-h-56 mx-auto rounded-lg hidden shadow-md"></canvas>
                     <div id="placeholder-foto" class="py-8 text-slate-400 text-xs">
                         <i class="fa-solid fa-image text-3xl mb-2 text-slate-300"></i>
-                        <p>Tome o suba la fotografía. Se le stampará la **Fecha, Hora y Coordenadas** automáticamente.</p>
+                        <p>Tome o suba la fotografía. Se le estampará la Fecha, Hora y Coordenadas automáticamente.</p>
                     </div>
                 </div>
 
@@ -231,16 +231,23 @@
         let polylineRuta = null;
         let watchId = null;
 
+        // Base de datos limpia con reseteo automático de versiones viejas
         let asesoresDB = {
             "1596": { id: "1596", nombre: "Administrador General", rol: "admin" },
             "1346": { id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, paradaActiva: 0, puntos: [] },
             "7946": { id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, paradaActiva: 0, puntos: [] }
         };
 
-        if (localStorage.getItem("asesoresDB_manoamiga_v4")) {
-            asesoresDB = JSON.parse(localStorage.getItem("asesoresDB_manoamiga_v4"));
+        // Forzar limpieza y actualización de clave admin limpia
+        const DB_KEY = "asesoresDB_manoamiga_v5";
+        if (localStorage.getItem(DB_KEY)) {
+            asesoresDB = JSON.parse(localStorage.getItem(DB_KEY));
+            // Asegurar que el admin exista siempre con la clave correcta
+            if (!asesoresDB["1596"]) {
+                asesoresDB["1596"] = { id: "1596", nombre: "Administrador General", rol: "admin" };
+            }
         } else {
-            localStorage.setItem("asesoresDB_manoamiga_v4", JSON.stringify(asesoresDB));
+            localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
         }
 
         let indexParadaSeleccionadaModal = null;
@@ -280,7 +287,8 @@
                 document.getElementById("admin-lock-container").style.display = "block";
                 poblarSelectVistaAdmin();
             } else {
-                document.getElementById("header-title").innerText = `Ruta de Campo - ${usuarioActual.nombre}`; document.getElementById("user-badge").innerText = `PIN: ${usuarioActual.id}`;
+                document.getElementById("header-title").innerText = `Ruta de Campo - ${usuarioActual.nombre}`;
+                document.getElementById("user-badge").innerText = `PIN: ${usuarioActual.id}`;
                 document.getElementById("admin-selector-box").style.display = "none";
                 document.getElementById("admin-lock-container").style.display = "none";
                 
@@ -362,10 +370,10 @@
                 let colorPin = p.estado === 'completado' ? '#10b981' : (p.estado === 'incidencia' ? '#f59e0b' : '#3b82f6');
                 let pinIcon = L.divIcon({
                     className: 'custom-div-icon',
-                    html: `<div style="background-color:${colorPin};color:white;width:28px;height:28px;border-radius:50\%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">${p.seq || ''}</div>`,
+                    html: `<div style="background-color:${colorPin};color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">${p.seq || ''}</div>`,
                     iconSize: [28, 28], iconAnchor: [14, 14]
                 });
-                L.marker([p.lat, p.lng], { icon: pinIcon }).addTo(map).bindPopup(`<b>${p.cliente}</b><br>Estado:${p.estado}`);
+                L.marker([p.lat, p.lng], { icon: pinIcon }).addTo(map).bindPopup(`<b>${p.cliente}</b><br>Estado: ${p.estado}`);
             });
             latLngs.push([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]);
             polylineRuta = L.polyline(latLngs, { color: '#2563eb', weight: 4, opacity: 0.8, dashArray: '6, 6' }).addTo(map);
@@ -385,11 +393,41 @@
             }
 
             asesoresDB[pin] = { id: pin, nombre: nombre, rol: "asesor", cerrado: false, paradaActiva: 0, puntos: [] };
-            localStorage.setItem("asesoresDB_manoamiga_v4", JSON.stringify(asesoresDB));
+            localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
             document.getElementById("nuevo-nombre-asesor").value = "";
             document.getElementById("nuevo-pin-asesor").value = "";
             poblarSelectVistaAdmin();
-            alert(`Asesor ${nombre} guardado.`); }  function optimizarYGuardarRuta() { let targetAsesor = usuarioActual; if (rolActual === "admin") { if (vistaAdminSeleccionada === "todos") { alert("Seleccione un asesor específico en el menú superior."); return; } targetAsesor = asesoresDB[vistaAdminSeleccionada]; }  if (targetAsesor.cerrado) { alert("⚠️ Coordenadas cerradas por el Administrador."); return; }  const textoCoords = document.getElementById("input-coordenadas").value.trim(); if (!textoCoords) return;  let lineas = textoCoords.split("\n"); let nuevosPuntos = []; lineas.forEach((linea, idx) => { let partes = linea.split(","); if (partes.length >= 2) { let lat = parseFloat(partes[0].trim()); let lng = parseFloat(partes[1].trim()); if (!isNaN(lat) && !isNaN(lng)) { nuevosPuntos.push({ lat: lat, lng: lng, cliente: `Cliente ${idx + 1} (${lat.toFixed(4)},${lng.toFixed(4)})`,
+            alert(`Asesor ${nombre} guardado.`);
+        }
+
+        function optimizarYGuardarRuta() {
+            let targetAsesor = usuarioActual;
+            if (rolActual === "admin") {
+                if (vistaAdminSeleccionada === "todos") {
+                    alert("Seleccione un asesor específico en el menú superior.");
+                    return;
+                }
+                targetAsesor = asesoresDB[vistaAdminSeleccionada];
+            }
+
+            if (targetAsesor.cerrado) {
+                alert("⚠️ Coordenadas cerradas por el Administrador.");
+                return;
+            }
+
+            const textoCoords = document.getElementById("input-coordenadas").value.trim();
+            if (!textoCoords) return;
+
+            let lineas = textoCoords.split("\n");
+            let nuevosPuntos = [];
+            lineas.forEach((linea, idx) => {
+                let partes = linea.split(",");
+                if (partes.length >= 2) {
+                    let lat = parseFloat(partes[0].trim());
+                    let lng = parseFloat(partes[1].trim());
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        nuevosPuntos.push({
+                            lat: lat, lng: lng, cliente: `Cliente ${idx + 1} (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
                             estado: "pendiente", nota: "", foto: "", hora: ""
                         });
                     }
@@ -422,7 +460,7 @@
 
             targetAsesor.puntos = rutaOrdenada;
             targetAsesor.paradaActiva = 0;
-            localStorage.setItem("asesoresDB_manoamiga_v4", JSON.stringify(asesoresDB));
+            localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
             
             document.getElementById("input-coordenadas").value = "";
             renderizarListaParadas();
@@ -437,7 +475,7 @@
             }
             let targetAsesor = asesoresDB[vistaAdminSeleccionada];
             targetAsesor.cerrado = !targetAsesor.cerrado;
-            localStorage.setItem("asesoresDB_manoamiga_v4", JSON.stringify(asesoresDB));
+            localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
             actualizarBotonCierreAdmin(targetAsesor.cerrado);
         }
 
@@ -514,7 +552,7 @@
 
                 let botonEliminarAdmin = "";
                 if (rolActual === "admin") {
-                    botonEliminarAdmin = `<button onclick="eliminarParadaAdmin('${vistaAdminSeleccionada}',${idx})" class="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition"><i class="fa-solid fa-trash"></i></button>`;
+                    botonEliminarAdmin = `<button onclick="eliminarParadaAdmin('${vistaAdminSeleccionada}', ${idx})" class="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition"><i class="fa-solid fa-trash"></i></button>`;
                 }
 
                 let div = document.createElement("div");
@@ -522,12 +560,13 @@
                 
                 div.innerHTML = `
                     <div class="flex justify-between items-start mb-2">
-                        <span class="text-xs font-black text-slate-500">Parada #${p.seq}${p.nombreAsesorPropietario ? '('+p.nombreAsesorPropietario+')' : ''}</span>
+                        <span class="text-xs font-black text-slate-500">Parada #${p.seq} ${p.nombreAsesorPropietario ? '('+p.nombreAsesorPropietario+')' : ''}</span>
                         ${badgeEstado}
                     </div>
                     <h4 class="font-bold text-slate-800 text-sm mb-1">${p.cliente}</h4>
                     <div class="flex justify-between items-center mb-3">
-                        <p class="text-[11px] text-slate-400 font-mono">Lat: ${p.lat.toFixed(4)}, Lng: ${p.lng.toFixed(4)}</p>${botonEliminarAdmin}
+                        <p class="text-[11px] text-slate-400 font-mono">Lat: ${p.lat.toFixed(4)}, Lng: ${p.lng.toFixed(4)}</p>
+                        ${botonEliminarAdmin}
                     </div>
                     
                     <div class="flex gap-2">
@@ -552,7 +591,7 @@
             }
             if (confirm("¿Eliminar esta parada?")) {
                 asesoresDB[pinAsesor].puntos.splice(index, 1);
-                localStorage.setItem("asesoresDB_manoamiga_v4", JSON.stringify(asesoresDB));
+                localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
                 renderizarListaParadas();
                 actualizarDibujoRutaMapa();
             }
@@ -588,12 +627,11 @@
                     canvas.height = img.height;
                     ctx.drawImage(img, 0, 0);
 
-                    // Estampar Marca de Agua
                     const ahora = new Date();
                     const fechaHora = ahora.toLocaleString('es-GT', { dateStyle: 'short', timeStyle: 'medium' });
                     
                     let paradaTarget = usuarioActual.puntos[indexParadaSeleccionadaModal];
-                    const textoMarcaAgua = `Mano Amiga | ${fechaHora} | Lat: ${paradaTarget.lat.toFixed(4)}, Lng:${paradaTarget.lng.toFixed(4)}`;
+                    const textoMarcaAgua = `Mano Amiga | ${fechaHora} | Lat: ${paradaTarget.lat.toFixed(4)}, Lng: ${paradaTarget.lng.toFixed(4)}`;
 
                     ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
                     ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
@@ -634,7 +672,7 @@
             }
 
             asesoresDB[usuarioActual.id] = usuarioActual;
-            localStorage.setItem("asesoresDB_manoamiga_v4", JSON.stringify(asesoresDB));
+            localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
 
             cerrarModalVisita();
             renderizarListaParadas();
@@ -659,7 +697,7 @@
             }
 
             asesoresDB[usuarioActual.id] = usuarioActual;
-            localStorage.setItem("asesoresDB_manoamiga_v4", JSON.stringify(asesoresDB));
+            localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
 
             cerrarModalVisita();
             renderizarListaParadas();
@@ -704,7 +742,7 @@
                                 <p class="text-xs text-slate-600 mt-2 bg-white p-2.5 rounded-xl border border-slate-200"><strong>Descripción:</strong> ${reg.nota}</p>
                             </div>
                             <div class="pt-2 border-t border-slate-200 flex justify-between items-center text-xs text-slate-500 font-mono">
-                                <span>📍 Lat: ${reg.lat.toFixed(4)}, Lng:${reg.lng.toFixed(4)}</span>
+                                <span>📍 Lat: ${reg.lat.toFixed(4)}, Lng: ${reg.lng.toFixed(4)}</span>
                                 <a href="https://www.google.com/maps?q=${reg.lat},${reg.lng}" target="_blank" class="text-blue-600 font-bold hover:underline">Ver Mapa</a>
                             </div>
                         </div>
@@ -750,4 +788,20 @@
                 let usr = asesoresDB[pin];
                 if (usr.rol === "asesor") {
                     usr.puntos.forEach(p => {
-                        csvContent += `"${usr.nombre}","${p.seq}","${p.cliente}","${p.estado}","${p.hora \vert{}\vert{} 'N/A'}","${p.nota || 'Sin observaciones'}","${p.lat}","${p.lng}"
+                        csvContent += `"${usr.nombre}","${p.seq}","${p.cliente}","${p.estado}","${p.hora || 'N/A'}","${p.nota || 'Sin observaciones'}","${p.lat}","${p.lng}"\n`;
+                    });
+                }
+            });
+
+            let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `Reporte_General_Rutas_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    </script>
+</body>
+</html>
