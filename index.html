@@ -113,13 +113,13 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Listado de Coordenadas (Lat, Lng)</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Agregar Nuevas Coordenadas (Lat, Lng)</label>
                         <textarea id="input-coordenadas" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none font-mono bg-slate-50" placeholder="15.0350, -91.1500&#10;15.0400, -91.1600"></textarea>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
                         <button onclick="optimizarYGuardarRuta()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md">
-                            <i class="fa-solid fa-wand-magic-sparkles"></i> Optimizar Ruta
+                            <i class="fa-solid fa-plus-circle"></i> Agregar y Reformular
                         </button>
                         <button onclick="exportarReporteExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md">
                             <i class="fa-solid fa-file-excel"></i> Exportar CSV
@@ -233,27 +233,30 @@
         let vistaAdminSeleccionada = "todos";
         let map = null;
         let marcadorMoto = null;
-        let polylineRuta = null;
+        let polylinesAsesores = [];
         let watchId = null;
 
+        // Paleta de colores distintivos por cada asesor
+        const COLORES_ASESORES = ["#2563eb", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4"];
+
         const baseInicial = {
-            "1596": { id: "1596", nombre: "Administrador General", rol: "admin" },
+            "1596": { id: "1596", nombre: "Administrador General", rol: "admin", color: "#1e293b" },
             "1346": { 
-                id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, paradaActiva: 0, 
+                id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#2563eb",
                 puntos: [
                     { lat: 15.0350, lng: -91.1500, cliente: "Cliente 1 (Santa Cruz)", estado: "pendiente", nota: "", foto: "", hora: "", seq: 1 },
                     { lat: 15.0400, lng: -91.1600, cliente: "Cliente 2 (Zona Central)", estado: "pendiente", nota: "", foto: "", hora: "", seq: 2 }
                 ] 
             },
             "7946": { 
-                id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, paradaActiva: 0, 
+                id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#10b981",
                 puntos: [
                     { lat: 15.0280, lng: -91.1450, cliente: "Cliente 1 (Acceso Sur)", estado: "pendiente", nota: "", foto: "", hora: "", seq: 1 }
                 ] 
             }
         };
 
-        const DB_KEY = "asesoresDB_manoamiga_v8";
+        const DB_KEY = "asesoresDB_manoamiga_v9";
         let asesoresDB = baseInicial;
 
         if (localStorage.getItem(DB_KEY)) {
@@ -372,38 +375,50 @@
             actualizarDibujoRutaMapa();
         }
 
+        // --- MAPA CON COLORES DIFERENCIADOS POR ASESOR ---
         function actualizarDibujoRutaMapa() {
             if (!map) return;
-            if (polylineRuta) map.removeLayer(polylineRuta);
+            
+            // Limpiar líneas anteriores
+            polylinesAsesores.forEach(l => map.removeLayer(l));
+            polylinesAsesores = [];
 
-            let puntosARenderizar = [];
+            let asesoresARenderizar = [];
             if (rolActual === "asesor") {
-                puntosARenderizar = usuarioActual.puntos;
+                asesoresARenderizar = [usuarioActual];
             } else {
                 if (vistaAdminSeleccionada === "todos") {
                     Object.keys(asesoresDB).forEach(pin => {
-                        if (asesoresDB[pin].rol === "asesor") {
-                            puntosARenderizar = puntosARenderizar.concat(asesoresDB[pin].puntos);
-                        }
+                        if (asesoresDB[pin].rol === "asesor") asesoresARenderizar.push(asesoresDB[pin]);
                     });
                 } else if (asesoresDB[vistaAdminSeleccionada]) {
-                    puntosARenderizar = asesoresDB[vistaAdminSeleccionada].puntos;
+                    asesoresARenderizar = [asesoresDB[vistaAdminSeleccionada]];
                 }
             }
 
-            let latLngs = [[AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]];
-            puntosARenderizar.forEach((p, idx) => {
-                latLngs.push([p.lat, p.lng]);
-                let colorPin = p.estado === 'completado' ? '#10b981' : (p.estado === 'incidencia' ? '#f59e0b' : '#3b82f6');
-                let pinIcon = L.divIcon({
-                    className: 'custom-div-icon',
-                    html: `<div style="background-color:${colorPin};color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">${idx + 1}</div>`,
-                    iconSize: [28, 28], iconAnchor: [14, 14]
+            asesoresARenderizar.forEach((usr, index) => {
+                let colorAsesor = usr.color || COLORES_ASESORES[index % COLORES_ASESORES.length];
+                let latLngs = [[AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]];
+
+                usr.puntos.forEach((p, idx) => {
+                    latLngs.push([p.lat, p.lng]);
+                    let colorPin = p.estado === 'completado' ? '#10b981' : (p.estado === 'incidencia' ? '#f59e0b' : colorAsesor);
+                    
+                    let pinIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div style="background-color:${colorPin};color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${idx + 1}</div>`,
+                        iconSize: [28, 28], iconAnchor: [14, 14]
+                    });
+                    
+                    let marker = L.marker([p.lat, p.lng], { icon: pinIcon }).addTo(map);
+                    marker.bindPopup(`<b>${usr.nombre}</b><br>${p.cliente}<br>Estado: ${p.estado}`);
+                    polylinesAsesores.push(marker);
                 });
-                L.marker([p.lat, p.lng], { icon: pinIcon }).addTo(map).bindPopup(`<b>${p.cliente}</b><br>Estado: ${p.estado}`);
+
+                latLngs.push([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]);
+                let polyline = L.polyline(latLngs, { color: colorAsesor, weight: 4, opacity: 0.8, dashArray: '6, 6' }).addTo(map);
+                polylinesAsesores.push(polyline);
             });
-            latLngs.push([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]);
-            polylineRuta = L.polyline(latLngs, { color: '#2563eb', weight: 4, opacity: 0.8, dashArray: '6, 6' }).addTo(map);
         }
 
         function registrarNuevoAsesorAdmin() {
@@ -419,7 +434,8 @@
                 return;
             }
 
-            asesoresDB[pin] = { id: pin, nombre: nombre, rol: "asesor", cerrado: false, paradaActiva: 0, puntos: [] };
+            let colorAsignado = COLORES_ASESORES[Object.keys(asesoresDB).length % COLORES_ASESORES.length];
+            asesoresDB[pin] = { id: pin, nombre: nombre, rol: "asesor", cerrado: false, paradaActiva: 0, color: colorAsasignado, puntos: [] };
             localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
             document.getElementById("nuevo-nombre-asesor").value = "";
             document.getElementById("nuevo-pin-asesor").value = "";
@@ -427,44 +443,53 @@
             alert(`Asesor ${nombre} guardado.`);
         }
 
+        // --- AGREGAR NUEVAS COORDENADAS SIN BORRAR LAS ANTERIORES Y REFORMULAR ---
         function optimizarYGuardarRuta() {
             let targetAsesor = usuarioActual;
             if (rolActual === "admin") {
                 if (vistaAdminSeleccionada === "todos") {
-                    alert("Seleccione un asesor específico en el menú superior.");
+                    alert("Seleccione un asesor específico en el menú superior para agregar coordenadas.");
                     return;
                 }
                 targetAsesor = asesoresDB[vistaAdminSeleccionada];
             }
 
             if (targetAsesor.cerrado) {
-                alert("⚠️ Coordenadas cerradas por el Administrador.");
+                alert("⚠️ Las coordenadas de esta ruta están cerradas por el Administrador.");
                 return;
             }
 
             const textoCoords = document.getElementById("input-coordenadas").value.trim();
-            if (!textoCoords) return;
+            if (!textoCoords) {
+                alert("Ingrese al menos una coordenada.");
+                return;
+            }
 
             let lineas = textoCoords.split("\n");
-            let nuevosPuntos = [];
+            let nuevosPuntosIngresados = [];
             lineas.forEach((linea, idx) => {
                 let partes = linea.split(",");
                 if (partes.length >= 2) {
                     let lat = parseFloat(partes[0].trim());
                     let lng = parseFloat(partes[1].trim());
                     if (!isNaN(lat) && !isNaN(lng)) {
-                        nuevosPuntos.push({
-                            lat: lat, lng: lng, cliente: `Cliente ${idx + 1} (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+                        nuevosPuntosIngresados.push({
+                            lat: lat, lng: lng, cliente: `Nuevo Cliente (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
                             estado: "pendiente", nota: "", foto: "", hora: ""
                         });
                     }
                 }
             });
 
-            if (nuevosPuntos.length === 0) return;
+            if (nuevosPuntosIngresados.length === 0) return;
 
-            let rutaOrdenada = [];
-            let noVisitados = [...nuevosPuntos];
+            // Conservar las paradas que ya existían (completadas, en proceso o pendientes)
+            let puntosExistentes = targetAsesor.puntos || [];
+            let todosLosPuntos = puntosExistentes.concat(nuevosPuntosIngresados);
+
+            // Reformular y optimizar toda la ruta respetando las ya completadas
+            let rutaOptimizadaFinal = [];
+            let noVisitados = [...todosLosPuntos];
             let actual = AGENCIA_CENTRAL;
 
             while (noVisitados.length > 0) {
@@ -480,19 +505,18 @@
                 }
 
                 actual = noVisitados[masCercanoIdx];
-                actual.seq = rutaOrdenada.length + 1;
-                rutaOrdenada.push(actual);
+                actual.seq = rutaOptimizadaFinal.length + 1;
+                rutaOptimizadaFinal.push(actual);
                 noVisitados.splice(masCercanoIdx, 1);
             }
 
-            targetAsesor.puntos = rutaOrdenada;
-            targetAsesor.paradaActiva = 0;
+            targetAsesor.puntos = rutaOptimizadaFinal;
             localStorage.setItem(DB_KEY, JSON.stringify(asesoresDB));
             
             document.getElementById("input-coordenadas").value = "";
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("Ruta optimizada exitosamente.");
+            alert("¡Nuevas coordenadas agregadas y ruta reformulada sin perder los registros anteriores!");
         }
 
         function toggleCierreCoordenadas() {
@@ -638,12 +662,10 @@
             document.getElementById("modal-visita").classList.add("hidden");
         }
 
-        // --- FOTO CON COORDENADA GPS REAL EN TIEMPO REAL ---
         function procesarFotoConGPSReal(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            // Intentar obtener la geolocalización actual exacta del dispositivo
             if (!navigator.geolocation) {
                 alert("Su navegador no soporta geolocalización.");
                 return;
@@ -670,7 +692,6 @@
                             const ahora = new Date();
                             const fechaHora = ahora.toLocaleString('es-GT', { dateStyle: 'short', timeStyle: 'medium' });
                             
-                            // Marca de agua con GPS REAL del dispositivo
                             const textoMarcaAgua = `Mano Amiga | ${fechaHora} | GPS Real: ${latReal.toFixed(5)}, ${lngReal.toFixed(5)}`;
 
                             ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
@@ -751,7 +772,6 @@
             alert("Incidencia marcada.");
         }
 
-        // --- BITÁCORA E IMPRESIÓN ---
         function abrirModalEvidencias() {
             const grid = document.getElementById("contenedor-grid-evidencias");
             grid.innerHTML = "";
