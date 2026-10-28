@@ -334,7 +334,6 @@
                     }
                 } catch(err) {}
             }
-            // Si falla o no hay bin, crearlo con la base inicial
             asesoresDB = baseInicial;
             await guardarEnNube();
         }
@@ -345,7 +344,6 @@
             const rolSeleccionado = document.getElementById("login-role").value;
             const pass = document.getElementById("login-pass").value.trim();
             
-            // Garantizar acceso inmediato respaldado por baseInicial si la nube tarda
             let cuenta = asesoresDB[pass] || baseInicial[pass];
 
             if (!cuenta) {
@@ -503,7 +501,6 @@
                     } else {
                         let m = L.marker([usr.lat, usr.lng], { icon: motoIcon }).addTo(map).bindPopup(`<b>Asesor en Campo: ${usr.nombre}</b>`);
                         marcadoresAsesores[usr.id] = m;
-                        polylinesAsesores.push(m);
                     }
                 }
             });
