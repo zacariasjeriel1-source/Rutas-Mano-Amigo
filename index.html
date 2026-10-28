@@ -31,7 +31,7 @@
                     <i class="fa-solid fa-route"></i>
                 </div>
                 <h1 class="text-2xl font-bold text-slate-900">Mano Amiga - Rutas</h1>
-                <p class="text-sm text-slate-500 mt-1">Agencia Central | Control de Asesores de Crédito</p>
+                <p class="text-sm text-slate-500 mt-1">Agencia Central | Control Global en la Nube</p>
             </div>
 
             <div class="space-y-5">
@@ -229,7 +229,8 @@
         const AGENCIA_CENTRAL = { lat: 15.032100742090686, lng: -91.15299656594703 };
         
         const JSONBIN_MASTER_KEY = "$2a$10$Yz5zDmv0.jYBbwhGg8pqQeanepEv9qArD7RA6/sQy5vS3mMHZQ75q";
-        let jsonBinId = localStorage.getItem("manoamiga_bin_id") || "";
+        // ID unificado fijo en la nube para que todos los dispositivos sincronicen con el mismo contenedor
+        const JSONBIN_ID_GLOBAL = "67c29e70acd3cb34a8e3d0cd"; 
 
         let usuarioActual = null;
         let rolActual = null;
@@ -264,7 +265,6 @@
 
         let asesoresDB = baseInicial;
 
-        // Función inteligente para calcular automáticamente la parada activa real sin retroceder completadas
         function recalcularParadaActiva(usuario) {
             if (!usuario || !usuario.puntos) return 0;
             let primeraPendiente = 0;
@@ -273,7 +273,6 @@
                     primeraPendiente = i;
                     break;
                 }
-                // Si todas están completadas, apuntar al final
                 if (i === usuario.puntos.length - 1) {
                     primeraPendiente = usuario.puntos.length;
                 }
@@ -281,40 +280,45 @@
             return primeraPendiente;
         }
 
+        // Sincronización robusta que descarga siempre el estado global compartido de la nube
         async function sincronizarDesdeNube() {
-            if (!jsonBinId || bloqueandoSincronizacion) return;
+            if (bloqueandoSincronizacion) return;
             try {
-                let response = await fetch(`https://api.jsonbin.io/v3/b/${jsonBinId}/latest`, {
+                let response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID_GLOBAL}/latest`, {
                     headers: { "X-Master-Key": JSONBIN_MASTER_KEY }
                 });
                 if (response.ok) {
                     let data = await response.json();
                     if (data && data.record && data.record["1596"]) {
-                        asesoresDB = data.record;
-                        if (usuarioActual && asesoresDB[usuarioActual.id]) {
-                            // Fusionar conservando el estado más avanzado y con fotos guardadas
-                            let nubeUser = asesoresDB[usuarioActual.id];
-                            if (usuarioActual.puntos && nubeUser.puntos) {
+                        let nubeDB = data.record;
+                        
+                        // Si el usuario actual está activo, fusionamos sus puntos completados para no perder nada local
+                        if (usuarioActual && nubeDB[usuarioActual.id]) {
+                            let cloudUser = nubeDB[usuarioActual.id];
+                            if (usuarioActual.puntos && cloudUser.puntos) {
                                 for (let i = 0; i < usuarioActual.puntos.length; i++) {
                                     if (usuarioActual.puntos[i].estado === "completado" || usuarioActual.puntos[i].estado === "incidencia") {
-                                        nubeUser.puntos[i] = usuarioActual.puntos[i]; // Priorizar local si tiene la foto recién tomada
+                                        cloudUser.puntos[i] = usuarioActual.puntos[i];
                                     }
                                 }
                             }
-                            nubeUser.paradaActiva = recalcularParadaActiva(nubeUser);
-                            usuarioActual = nubeUser;
-                            asesoresDB[usuarioActual.id] = usuarioActual;
+                            cloudUser.paradaActiva = recalcularParadaActiva(cloudUser);
+                            usuarioActual = cloudUser;
+                            nubeDB[usuarioActual.id] = usuarioActual;
                         }
+                        
+                        asesoresDB = nubeDB;
                         if (rolActual === "admin") poblarSelectVistaAdmin();
                         renderizarListaParadas();
                         actualizarDibujoRutaMapa();
                     }
                 }
             } catch (e) {
-                console.warn("Sincronizando con base local de respaldo...");
+                console.warn("Error de sincronización, usando caché local.");
             }
         }
 
+        // Guardado global atómico compartido
         async function guardarEnNube() {
             bloqueandoSincronizacion = true;
             try {
@@ -323,61 +327,43 @@
                     asesoresDB[usuarioActual.id] = usuarioActual;
                 }
 
-                if (!jsonBinId) {
-                    let response = await fetch("https://api.jsonbin.io/v3/b", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-Master-Key": JSONBIN_MASTER_KEY,
-                            "X-Bin-Name": "ManoAmiga_Rutas_DB"
-                        },
-                        body: JSON.stringify(baseInicial)
-                    });
-                    if (response.ok) {
-                        let resData = await response.json();
-                        jsonBinId = resData.metadata.id;
-                        localStorage.setItem("manoamiga_bin_id", jsonBinId);
-                        asesoresDB = baseInicial;
-                    }
-                } else {
-                    await fetch(`https://api.jsonbin.io/v3/b/${jsonBinId}`, {
-                        method: "PUT",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-Master-Key": JSONBIN_MASTER_KEY
-                        },
-                        body: JSON.stringify(asesoresDB)
-                    });
-                }
+                // Enviar la base de datos completa unificada al Bin global compartido
+                await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID_GLOBAL}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Master-Key": JSONBIN_MASTER_KEY
+                    },
+                    body: JSON.stringify(asesoresDB)
+                });
             } catch (e) {
-                console.warn("Error al guardar en nube:", e);
+                console.warn("Error al guardar en nube compartida:", e);
             } finally {
                 setTimeout(() => {
                     bloqueandoSincronizacion = false;
-                }, 3000);
+                }, 2000);
             }
         }
 
-        async function iniciarConexionNube() {
-            if (jsonBinId) {
-                try {
-                    let res = await fetch(`https://api.jsonbin.io/v3/b/${jsonBinId}/latest`, {
-                        headers: { "X-Master-Key": JSONBIN_MASTER_KEY }
-                    });
-                    if (res.ok) {
-                        let json = await res.json();
-                        if (json && json.record && json.record["1596"]) {
-                            asesoresDB = json.record;
-                            return;
-                        }
+        async function inicializarConexionGlobal() {
+            try {
+                let res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID_GLOBAL}/latest`, {
+                    headers: { "X-Master-Key": JSONBIN_MASTER_KEY }
+                });
+                if (res.ok) {
+                    let json = await res.json();
+                    if (json && json.record && json.record["1596"]) {
+                        asesoresDB = json.record;
+                        return;
                     }
-                } catch(err) {}
-            }
+                }
+            } catch(err) {}
+            // Si el bin global estuviera vacío, se inicializa
             asesoresDB = baseInicial;
             await guardarEnNube();
         }
 
-        iniciarConexionNube();
+        inicializarConexionGlobal();
 
         function intentarLogin() {
             const rolSeleccionado = document.getElementById("login-role").value;
@@ -444,6 +430,7 @@
                 renderizarListaParadas();
             }, 200);
 
+            // Sincronización global en tiempo real cada 5 segundos
             intervaloCloudSync = setInterval(async () => {
                 await sincronizarDesdeNube();
             }, 5000);
@@ -568,7 +555,7 @@
             document.getElementById("nuevo-nombre-asesor").value = "";
             document.getElementById("nuevo-pin-asesor").value = "";
             poblarSelectVistaAdmin();
-            alert(`Asesor ${nombre} guardado.`);
+            alert(`Asesor ${nombre} guardado en la nube compartida.`);
         }
 
         async function optimizarYGuardarRuta() {
@@ -594,14 +581,14 @@
 
             let lineas = textoCoords.split("\n");
             let nuevosPuntosIngresados = [];
-            lineas.forEach((linea, idx) => {
+            lineas.forEach((linea) => {
                 let partes = linea.split(",");
                 if (partes.length >= 2) {
                     let lat = parseFloat(partes[0].trim());
                     let lng = parseFloat(partes[1].trim());
                     if (!isNaN(lat) && !isNaN(lng)) {
                         nuevosPuntosIngresados.push({
-                            lat: lat, lng: lng, cliente: `Nuevo Cliente (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+                            lat: lat, lng: lng, cliente: `Cliente (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
                             estado: "pendiente", nota: "", foto: "", hora: ""
                         });
                     }
@@ -643,7 +630,7 @@
             document.getElementById("input-coordenadas").value = "";
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("¡Nuevas coordenadas agregadas y ruta reformulada!");
+            alert("¡Ruta optimizada y sincronizada en tiempo real!");
         }
 
         async function toggleCierreCoordenadas() {
@@ -779,6 +766,9 @@
             }
         }
 
+        let indexParadaSeleccionadaModal = null;
+        let imagenBase64Procesada = "";
+
         function abrirModalVisita(idx) {
             indexParadaSeleccionadaModal = idx;
             document.getElementById("input-avance").value = "";
@@ -872,7 +862,7 @@
             cerrarModalVisita();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("¡Visita guardada, bitácora actualizada y sincronizada permanentemente!");
+            alert("¡Visita guardada y sincronizada globalmente con éxito!");
         }
 
         async function marcarIncidenciaAusente() {
@@ -894,7 +884,7 @@
             cerrarModalVisita();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("Incidencia marcada y sincronizada permanentemente.");
+            alert("Incidencia marcada y sincronizada globalmente.");
         }
 
         function abrirModalEvidencias() {
@@ -915,7 +905,7 @@
             });
 
             if (registrosConFoto.length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 text-sm"><i class="fa-solid fa-camera text-4xl mb-2"></i><p>Aún no hay visitas con fotografía registradas.</p></div>`;
+                grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 text-sm"><i class="fa-solid fa-camera text-4xl mb-2"></i><p>Aún no hay visitas con fotografía registradas en la nube.</p></div>`;
             } else {
                 registrosConFoto.forEach(reg => {
                     let card = document.createElement("div");
@@ -979,7 +969,7 @@
                 (err) => { console.warn("GPS Error: " + err.message); },
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
-            alert("🚀 GPS en vivo activado. Su posición se está transmitiendo a la nube.");
+            alert("🚀 GPS en vivo activado. Transmitiendo ubicación a la nube global.");
         }
 
         function exportarReporteExcel() {
