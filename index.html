@@ -282,7 +282,7 @@
                     }
                 }
             } catch (e) {
-                console.warn("Error de sincronización con la nube:", e);
+                console.warn("Sincronizando con base local de respaldo...");
             }
         }
 
@@ -315,29 +315,38 @@
                     });
                 }
             } catch (e) {
-                console.warn("Error al guardar en la nube:", e);
+                console.warn("Error al guardar en nube");
             }
         }
 
-        async function inicializarBaseDatos() {
+        async function iniciarConexionNube() {
             if (jsonBinId) {
-                await sincronizarDesdeNube();
-                // Si el bin descargado está vacío o no tiene usuarios, reinicializarlo
-                if (!asesoresDB || !asesoresDB["1596"]) {
-                    asesoresDB = baseInicial;
-                    await guardarEnNube();
-                }
-            } else {
-                asesoresDB = baseInicial;
-                await guardarEnNube();
+                try {
+                    let res = await fetch(`https://api.jsonbin.io/v3/b/${jsonBinId}/latest`, {
+                        headers: { "X-Master-Key": JSONBIN_MASTER_KEY }
+                    });
+                    if (res.ok) {
+                        let json = await res.json();
+                        if (json && json.record && json.record["1596"]) {
+                            asesoresDB = json.record;
+                            return;
+                        }
+                    }
+                } catch(err) {}
             }
+            // Si falla o no hay bin, crearlo con la base inicial
+            asesoresDB = baseInicial;
+            await guardarEnNube();
         }
-        inicializarBaseDatos();
+
+        iniciarConexionNube();
 
         function intentarLogin() {
             const rolSeleccionado = document.getElementById("login-role").value;
             const pass = document.getElementById("login-pass").value.trim();
-            const cuenta = asesoresDB[pass];
+            
+            // Garantizar acceso inmediato respaldado por baseInicial si la nube tarda
+            let cuenta = asesoresDB[pass] || baseInicial[pass];
 
             if (!cuenta) {
                 alert("PIN o Contraseña incorrecta. Verifique sus datos.");
@@ -345,4 +354,617 @@
             }
 
             if (rolSeleccionado === "admin" && cuenta.rol !== "admin") {
-                alert("⚠️ Esta
+                alert("⚠️ Esta clave no pertenece a un Administrador.");
+                return;
+            }
+
+            if (rolSeleccionado === "asesor" && cuenta.rol !== "asesor") {
+                alert("⚠️ Esta clave pertenece al Administrador. Seleccione 'Administrador' en el menú.");
+                return;
+            }
+
+            rolActual = cuenta.rol;
+            usuarioActual = cuenta;
+            iniciarSistemaApp();
+        }
+
+        function cerrarSesion() {
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (intervaloCloudSync) clearInterval(intervaloCloudSync);
+            document.getElementById("app-container").classList.add("hidden");
+            document.getElementById("login-screen").classList.remove("hidden");
+            document.getElementById("login-pass").value = "";
+        }
+
+        function iniciarSistemaApp() {
+            document.getElementById("login-screen").classList.add("hidden");
+            document.getElementById("app-container").classList.remove("hidden");
+            document.getElementById("input-coordenadas").value = "";
+
+            if (rolActual === "admin") {
+                document.getElementById("header-title").innerText = "Panel Gerencial - Supervisión Total";
+                document.getElementById("user-badge").innerText = "Administrador (1596)";
+                document.getElementById("admin-controls-box").style.display = "block";
+                document.getElementById("admin-selector-box").style.display = "block";
+                document.getElementById("admin-lock-container").style.display = "block";
+                poblarSelectVistaAdmin();
+            } else {
+                document.getElementById("header-title").innerText = `Ruta de Campo - ${usuarioActual.nombre}`;
+                document.getElementById("user-badge").innerText = `PIN: ${usuarioActual.id}`;
+                document.getElementById("admin-selector-box").style.display = "none";
+                document.getElementById("admin-lock-container").style.display = "none";
+                
+                if (usuarioActual.cerrado) {
+                    document.getElementById("admin-controls-box").style.display = "none";
+                } else {
+                    document.getElementById("admin-controls-box").style.display = "block";
+                }
+            }
+
+            setTimeout(() => {
+                inicializarMapaLeaflet();
+                renderizarListaParadas();
+            }, 200);
+
+            intervaloCloudSync = setInterval(async () => {
+                await sincronizarDesdeNube();
+            }, 5000);
+        }
+
+        function poblarSelectVistaAdmin() {
+            const select = document.getElementById("select-vista-asesor");
+            select.innerHTML = `<option value="todos">🌍 Ver Todos los Asesores en simultáneo</option>`;
+            Object.keys(asesoresDB).forEach(pin => {
+                let usr = asesoresDB[pin];
+                if (usr && usr.rol === "asesor") {
+                    let opt = document.createElement("option");
+                    opt.value = pin;
+                    opt.innerText = usr.nombre + ` (PIN: ${pin})`;
+                    select.appendChild(opt);
+                }
+            });
+        }
+
+        function cambiarVistaAdmin() {
+            vistaAdminSeleccionada = document.getElementById("select-vista-asesor").value;
+            renderizarListaParadas();
+            actualizarDibujoRutaMapa();
+        }
+
+        function inicializarMapaLeaflet() {
+            if (!map) {
+                map = L.map('map').setView([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], 14);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+                let agIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color:#1e293b;color:white;padding:8px;border-radius:50%;text-align:center;"><i class="fa-solid fa-building-columns"></i></div>`,
+                    iconSize: [36, 36], iconAnchor: [18, 18]
+                });
+                L.marker([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], { icon: agIcon }).addTo(map).bindPopup("<b>Agencia Central</b>");
+            } else {
+                map.invalidateSize();
+            }
+            actualizarDibujoRutaMapa();
+        }
+
+        function actualizarDibujoRutaMapa() {
+            if (!map) return;
+            
+            polylinesAsesores.forEach(l => map.removeLayer(l));
+            polylinesAsesores = [];
+
+            let asesoresARenderizar = [];
+            if (rolActual === "asesor") {
+                asesoresARenderizar = [usuarioActual];
+            } else {
+                if (vistaAdminSeleccionada === "todos") {
+                    Object.keys(asesoresDB).forEach(pin => {
+                        if (asesoresDB[pin] && asesoresDB[pin].rol === "asesor") asesoresARenderizar.push(asesoresDB[pin]);
+                    });
+                } else if (asesoresDB[vistaAdminSeleccionada]) {
+                    asesoresARenderizar = [asesoresDB[vistaAdminSeleccionada]];
+                }
+            }
+
+            asesoresARenderizar.forEach((usr, index) => {
+                if (!usr || !usr.puntos) return;
+                let colorAsesor = usr.color || COLORES_ASESORES[index % COLORES_ASESORES.length];
+                let latLngs = [[AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]];
+
+                usr.puntos.forEach((p, idx) => {
+                    latLngs.push([p.lat, p.lng]);
+                    let colorPin = p.estado === 'completado' ? '#10b981' : (p.estado === 'incidencia' ? '#f59e0b' : colorAsesor);
+                    
+                    let pinIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div style="background-color:${colorPin};color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${idx + 1}</div>`,
+                        iconSize: [28, 28], iconAnchor: [14, 14]
+                    });
+                    
+                    let marker = L.marker([p.lat, p.lng], { icon: pinIcon }).addTo(map);
+                    marker.bindPopup(`<b>${usr.nombre}</b><br>${p.cliente}<br>Estado: ${p.estado}`);
+                    polylinesAsesores.push(marker);
+                });
+
+                latLngs.push([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]);
+                let polyline = L.polyline(latLngs, { color: colorAsesor, weight: 4, opacity: 0.8, dashArray: '6, 6' }).addTo(map);
+                polylinesAsesores.push(polyline);
+
+                if (usr.lat && usr.lng) {
+                    let motoIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div style="background-color:${colorAsesor};color:white;padding:8px;border-radius:50%;text-align:center;border: 2px solid white;box-shadow: 0 3px 6px rgba(0,0,0,0.4);"><i class="fa-solid fa-motorcycle"></i></div>`,
+                        iconSize: [36, 36], iconAnchor: [18, 18]
+                    });
+
+                    if (marcadoresAsesores[usr.id]) {
+                        marcadoresAsesores[usr.id].setLatLng([usr.lat, usr.lng]);
+                    } else {
+                        let m = L.marker([usr.lat, usr.lng], { icon: motoIcon }).addTo(map).bindPopup(`<b>Asesor en Campo: ${usr.nombre}</b>`);
+                        marcadoresAsesores[usr.id] = m;
+                        polylinesAsesores.push(m);
+                    }
+                }
+            });
+        }
+
+        function registrarNuevoAsesorAdmin() {
+            const nombre = document.getElementById("nuevo-nombre-asesor").value.trim();
+            const pin = document.getElementById("nuevo-pin-asesor").value.trim();
+
+            if (!nombre || !pin) {
+                alert("Ingrese el nombre y el PIN de 4 dígitos.");
+                return;
+            }
+            if (asesoresDB[pin]) {
+                alert("Este PIN ya está registrado.");
+                return;
+            }
+
+            let colorAsignado = COLORES_ASESORES[Object.keys(asesoresDB).length % COLORES_ASESORES.length];
+            asesoresDB[pin] = { 
+                id: pin, nombre: nombre, rol: "asesor", cerrado: false, paradaActiva: 0, 
+                color: colorAsignado, lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, puntos: [] 
+            };
+            guardarEnNube();
+            document.getElementById("nuevo-nombre-asesor").value = "";
+            document.getElementById("nuevo-pin-asesor").value = "";
+            poblarSelectVistaAdmin();
+            alert(`Asesor ${nombre} guardado.`);
+        }
+
+        function optimizarYGuardarRuta() {
+            let targetAsesor = usuarioActual;
+            if (rolActual === "admin") {
+                if (vistaAdminSeleccionada === "todos") {
+                    alert("Seleccione un asesor específico en el menú superior para agregar coordenadas.");
+                    return;
+                }
+                targetAsesor = asesoresDB[vistaAdminSeleccionada];
+            }
+
+            if (targetAsesor.cerrado) {
+                alert("⚠️ Las coordenadas de esta ruta están cerradas por el Administrador.");
+                return;
+            }
+
+            const textoCoords = document.getElementById("input-coordenadas").value.trim();
+            if (!textoCoords) {
+                alert("Ingrese al menos una coordenada.");
+                return;
+            }
+
+            let lineas = textoCoords.split("\n");
+            let nuevosPuntosIngresados = [];
+            lineas.forEach((linea, idx) => {
+                let partes = linea.split(",");
+                if (partes.length >= 2) {
+                    let lat = parseFloat(partes[0].trim());
+                    let lng = parseFloat(partes[1].trim());
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        nuevosPuntosIngresados.push({
+                            lat: lat, lng: lng, cliente: `Nuevo Cliente (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+                            estado: "pendiente", nota: "", foto: "", hora: ""
+                        });
+                    }
+                }
+            });
+
+            if (nuevosPuntosIngresados.length === 0) return;
+
+            let puntosExistentes = targetAsesor.puntos || [];
+            let todosLosPuntos = puntosExistentes.concat(nuevosPuntosIngresados);
+
+            let rutaOptimizadaFinal = [];
+            let noVisitados = [...todosLosPuntos];
+            let actual = AGENCIA_CENTRAL;
+
+            while (noVisitados.length > 0) {
+                let masCercanoIdx = 0;
+                let menorDistancia = calcularDistancia(actual.lat, actual.lng, noVisitados[0].lat, noVisitados[0].lng);
+
+                for (let i = 1; i < noVisitados.length; i++) {
+                    let dist = calcularDistancia(actual.lat, actual.lng, noVisitados[i].lat, noVisitados[i].lng);
+                    if (dist < menorDistancia) {
+                        menorDistancia = dist;
+                        masCercanoIdx = i;
+                    }
+                }
+
+                actual = noVisitados[masCercanoIdx];
+                actual.seq = rutaOptimizadaFinal.length + 1;
+                rutaOptimizadaFinal.push(actual);
+                noVisitados.splice(masCercanoIdx, 1);
+            }
+
+            targetAsesor.puntos = rutaOptimizadaFinal;
+            guardarEnNube();
+            
+            document.getElementById("input-coordenadas").value = "";
+            renderizarListaParadas();
+            actualizarDibujoRutaMapa();
+            alert("¡Nuevas coordenadas agregadas y ruta reformulada!");
+        }
+
+        function toggleCierreCoordenadas() {
+            if (vistaAdminSeleccionada === "todos") {
+                alert("Seleccione un asesor específico.");
+                return;
+            }
+            let targetAsesor = asesoresDB[vistaAdminSeleccionada];
+            targetAsesor.cerrado = !targetAsesor.cerrado;
+            guardarEnNube();
+            actualizarBotonCierreAdmin(targetAsesor.cerrado);
+        }
+
+        function actualizarBotonCierreAdmin(cerrado) {
+            const btn = document.getElementById("btn-toggle-lock");
+            const badge = document.getElementById("lock-status-badge");
+            if (cerrado) {
+                btn.innerHTML = `<i class="fa-solid fa-lock-open"></i> Abrir Edición`;
+                badge.innerText = "Ruta Cerrada";
+                badge.className = "text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded font-bold";
+            } else {
+                btn.innerHTML = `<i class="fa-solid fa-lock"></i> Cerrar Edición`;
+                badge.innerText = "Ruta Abierta";
+                badge.className = "text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold";
+            }
+        }
+
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            let R = 6371;
+            let dLat = (lat2 - lat1) * Math.PI / 180;
+            let dLon = (lon2 - lon1) * Math.PI / 180;
+            let a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+        }
+
+        function renderizarListaParadas() {
+            const contenedor = document.getElementById("lista-paradas");
+            contenedor.innerHTML = "";
+
+            let puntosAMostrar = [];
+            let paradaActivaIdx = 0;
+
+            if (rolActual === "asesor") {
+                puntosAMostrar = usuarioActual.puntos || [];
+                paradaActivaIdx = usuarioActual.paradaActiva || 0;
+            } else {
+                if (vistaAdminSeleccionada === "todos") {
+                    Object.keys(asesoresDB).forEach(pin => {
+                        let usr = asesoresDB[pin];
+                        if (usr && usr.rol === "asesor" && usr.puntos) {
+                            usr.puntos.forEach(p => {
+                                p.nombreAsesorPropietario = usr.nombre;
+                                puntosAMostrar.push(p);
+                            });
+                        }
+                    });
+                } else {
+                    let usr = asesoresDB[vistaAdminSeleccionada];
+                    if (usr && usr.puntos) {
+                        puntosAMostrar = usr.puntos;
+                        paradaActivaIdx = usr.paradaActiva || 0;
+                        actualizarBotonCierreAdmin(usr.cerrado);
+                    }
+                }
+            }
+
+            if (puntosAMostrar.length === 0) {
+                contenedor.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs"><i class="fa-solid fa-route text-3xl mb-2"></i><p>Sin paradas registradas.</p></div>`;
+                return;
+            }
+
+            puntosAMostrar.forEach((p, idx) => {
+                p.seq = idx + 1;
+                let esActiva = (idx === paradaActivaIdx && rolActual === "asesor");
+                let estaBloqueada = (idx > paradaActivaIdx && rolActual === "asesor");
+
+                let badgeEstado = '';
+                if (p.estado === 'completado') badgeEstado = `<span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-bold">Completado</span>`;
+                else if (p.estado === 'incidencia') badgeEstado = `<span class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded font-bold">Incidencia</span>`;
+                else if (esActiva) badgeEstado = `<span class="bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded font-bold">Activa</span>`;
+                else badgeEstado = `<span class="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded font-bold">Bloqueado</span>`;
+
+                let botonEliminarAdmin = "";
+                if (rolActual === "admin") {
+                    botonEliminarAdmin = `<button onclick="eliminarParadaAdmin('${vistaAdminSeleccionada}', ${idx})" class="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition"><i class="fa-solid fa-trash"></i></button>`;
+                }
+
+                let div = document.createElement("div");
+                div.className = `p-4 rounded-xl border transition duration-200 ${esActiva ? 'border-blue-500 bg-blue-50/50 shadow-md' : 'border-slate-200 bg-white'}`;
+                
+                div.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-black text-slate-500">Parada #${p.seq} ${p.nombreAsesorPropietario ? '('+p.nombreAsesorPropietario+')' : ''}</span>
+                        ${badgeEstado}
+                    </div>
+                    <h4 class="font-bold text-slate-800 text-sm mb-1">${p.cliente}</h4>
+                    <div class="flex justify-between items-center mb-3">
+                        <p class="text-[11px] text-slate-400 font-mono">Lat: ${p.lat.toFixed(4)}, Lng: ${p.lng.toFixed(4)}</p>
+                        ${botonEliminarAdmin}
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <a href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}" target="_blank" 
+                           class="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-center py-2 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${estaBloqueada ? 'opacity-50 pointer-events-none' : ''}">
+                            <i class="fa-solid fa-diamond-turn-right"></i> Maps
+                        </a>
+                        <button onclick="abrirModalVisita(${idx})" 
+                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${estaBloqueada ? 'opacity-50 pointer-events-none' : ''} ${rolActual==='admin' ? 'hidden':''}">
+                            <i class="fa-solid fa-camera"></i> Registrar
+                        </button>
+                    </div>
+                `;
+                contenedor.appendChild(div);
+            });
+        }
+
+        function eliminarParadaAdmin(pinAsesor, index) {
+            if (pinAsesor === "todos") {
+                alert("Seleccione un asesor en específico en el menú superior.");
+                return;
+            }
+            if (confirm("¿Eliminar esta parada?")) {
+                asesoresDB[pinAsesor].puntos.splice(index, 1);
+                guardarEnNube();
+                renderizarListaParadas();
+                actualizarDibujoRutaMapa();
+            }
+        }
+
+        function abrirModalVisita(idx) {
+            indexParadaSeleccionadaModal = idx;
+            document.getElementById("input-avance").value = "";
+            document.getElementById("input-foto").value = "";
+            document.getElementById("canvas-preview").classList.add("hidden");
+            document.getElementById("placeholder-foto").classList.remove("hidden");
+            imagenBase64Procesada = "";
+            document.getElementById("modal-visita").classList.remove("hidden");
+        }
+
+        function cerrarModalVisita() {
+            document.getElementById("modal-visita").classList.add("hidden");
+        }
+
+        function procesarFotoConGPSReal(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!navigator.geolocation) {
+                alert("Su navegador no soporta geolocalización.");
+                return;
+            }
+
+            alert("Obteniendo su ubicación GPS real en tiempo real para estampar en la foto...");
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const latReal = position.coords.latitude;
+                    const lngReal = position.coords.longitude;
+
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() {
+                            const canvas = document.getElementById("canvas-preview");
+                            const ctx = canvas.getContext("2d");
+
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0);
+
+                            const ahora = new Date();
+                            const fechaHora = ahora.toLocaleString('es-GT', { dateStyle: 'short', timeStyle: 'medium' });
+                            
+                            const textoMarcaAgua = `Mano Amiga | ${fechaHora} | GPS Real: ${latReal.toFixed(5)}, ${lngReal.toFixed(5)}`;
+
+                            ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+                            ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+
+                            ctx.fillStyle = "#ffffff";
+                            ctx.font = "bold 20px sans-serif";
+                            ctx.fillText(textoMarcaAgua, 20, canvas.height - 22);
+
+                            imagenBase64Procesada = canvas.toDataURL("image/jpeg", 0.85);
+                            
+                            document.getElementById("placeholder-foto").classList.add("hidden");
+                            canvas.classList.remove("hidden");
+                        }
+                        img.src = e.target.result;
+                    }
+                    reader.readAsDataURL(file);
+                },
+                (error) => {
+                    alert("⚠️ No se pudo obtener la ubicación GPS real.");
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        function guardarVisitaExitosa() {
+            const nota = document.getElementById("input-avance").value.trim();
+            if (!nota) {
+                alert("Escriba la descripción del avance.");
+                return;
+            }
+            if (!imagenBase64Procesada) {
+                alert("⚠️ Debe tomar o subir una fotografía con GPS real como evidencia obligatoria.");
+                return;
+            }
+
+            let puntos = usuarioActual.puntos;
+            puntos[indexParadaSeleccionadaModal].estado = "completado";
+            puntos[indexParadaSeleccionadaModal].nota = nota;
+            puntos[indexParadaSeleccionadaModal].foto = imagenBase64Procesada;
+            puntos[indexParadaSeleccionadaModal].hora = new Date().toLocaleString();
+
+            if (usuarioActual.paradaActiva === indexParadaSeleccionadaModal) {
+                usuarioActual.paradaActiva += 1;
+            }
+
+            asesoresDB[usuarioActual.id] = usuarioActual;
+            guardarEnNube();
+
+            cerrarModalVisita();
+            renderizarListaParadas();
+            actualizarDibujoRutaMapa();
+            alert("¡Visita guardada con éxito!");
+        }
+
+        function marcarIncidenciaAusente() {
+            if (!imagenBase64Procesada) {
+                alert("⚠️ Debe tomar o subir una fotografía con GPS real como evidencia.");
+                return;
+            }
+
+            let puntos = usuarioActual.puntos;
+            puntos[indexParadaSeleccionadaModal].estado = "incidencia";
+            puntos[indexParadaSeleccionadaModal].nota = "Cliente Ausente";
+            puntos[indexParadaSeleccionadaModal].foto = imagenBase64Procesada;
+            puntos[indexParadaSeleccionadaModal].hora = new Date().toLocaleString();
+
+            if (usuarioActual.paradaActiva === indexParadaSeleccionadaModal) {
+                usuarioActual.paradaActiva += 1;
+            }
+
+            asesoresDB[usuarioActual.id] = usuarioActual;
+            guardarEnNube();
+
+            cerrarModalVisita();
+            renderizarListaParadas();
+            actualizarDibujoRutaMapa();
+            alert("Incidencia marcada.");
+        }
+
+        function abrirModalEvidencias() {
+            const grid = document.getElementById("contenedor-grid-evidencias");
+            grid.innerHTML = "";
+
+            let registrosConFoto = [];
+
+            Object.keys(asesoresDB).forEach(pin => {
+                let usr = asesoresDB[pin];
+                if (usr && usr.rol === "asesor" && usr.puntos) {
+                    usr.puntos.forEach(p => {
+                        if (p.foto) {
+                            registrosConFoto.push({ ...p, asesorNombre: usr.nombre });
+                        }
+                    });
+                }
+            });
+
+            if (registrosConFoto.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 text-sm"><i class="fa-solid fa-camera text-4xl mb-2"></i><p>Aún no hay visitas con fotografía registradas.</p></div>`;
+            } else {
+                registrosConFoto.forEach(reg => {
+                    let card = document.createElement("div");
+                    card.className = "bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col page-break";
+                    card.innerHTML = `
+                        <div class="p-3 bg-slate-900 text-white flex justify-between items-center text-xs">
+                            <span class="font-bold"><i class="fa-solid fa-user-check text-blue-400"></i> Asesor: ${reg.asesorNombre}</span>
+                            <span class="text-slate-300 font-mono">${reg.hora}</span>
+                        </div>
+                        <img src="${reg.foto}" class="w-full h-56 object-cover border-b border-slate-200">
+                        <div class="p-4 space-y-2 flex-1 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded ${reg.estado==='completado'?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}">${reg.estado}</span>
+                                <h4 class="font-bold text-slate-900 text-sm mt-1">${reg.cliente}</h4>
+                                <p class="text-xs text-slate-700 mt-2 bg-white p-3 rounded-xl border border-slate-200"><strong>Descripción:</strong> ${reg.nota}</p>
+                            </div>
+                            <div class="pt-2 border-t border-slate-200 flex justify-between items-center text-xs text-slate-500 font-mono">
+                                <span>📍 Coordenada: ${reg.lat.toFixed(4)}, ${reg.lng.toFixed(4)}</span>
+                                <a href="https://www.google.com/maps?q=${reg.lat},${reg.lng}" target="_blank" class="text-blue-600 font-bold hover:underline">Ver Mapa</a>
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            }
+
+            document.getElementById("modal-evidencias").classList.remove("hidden");
+        }
+
+        function cerrarModalEvidencias() {
+            document.getElementById("modal-evidencias").classList.add("hidden");
+        }
+
+        function activarGPSReal() {
+            if (!navigator.geolocation) {
+                alert("Su dispositivo no soporta geolocalización.");
+                return;
+            }
+
+            watchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    const velMs = pos.coords.speed || 0;
+                    document.getElementById("waze-speed").innerText = (velMs * 3.6).toFixed(1);
+
+                    if (usuarioActual && rolActual === "asesor") {
+                        usuarioActual.lat = lat;
+                        usuarioActual.lng = lng;
+                        asesoresDB[usuarioActual.id] = usuarioActual;
+                        guardarEnNube();
+                    }
+
+                    let puntos = usuarioActual ? usuarioActual.puntos : [];
+                    let paradaActivaIdx = usuarioActual ? usuarioActual.paradaActiva : 0;
+                    if (puntos[paradaActivaIdx]) {
+                        let distKm = calcularDistancia(lat, lng, puntos[paradaActivaIdx].lat, puntos[paradaActivaIdx].lng);
+                        document.getElementById("waze-distance").innerText = (distKm * 1000).toFixed(0);
+                    }
+                },
+                (err) => { console.warn("GPS Error: " + err.message); },
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+            );
+            alert("🚀 GPS en vivo activado. Su posición se está transmitiendo a la nube.");
+        }
+
+        function exportarReporteExcel() {
+            let csvContent = "\uFEFFAsesor,Seq,Cliente,Estado,Hora,Nota,Latitud,Longitud\n";
+            Object.keys(asesoresDB).forEach(pin => {
+                let usr = asesoresDB[pin];
+                if (usr && usr.rol === "asesor" && usr.puntos) {
+                    usr.puntos.forEach(p => {
+                        csvContent += `"${usr.nombre}","${p.seq}","${p.cliente}","${p.estado}","${p.hora || 'N/A'}","${p.nota || 'Sin observaciones'}","${p.lat}","${p.lng}"\n`;
+                    });
+                }
+            });
+
+            let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `Bitacora_Rutas_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    </script>
+</body>
+</html>
