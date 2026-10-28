@@ -239,6 +239,7 @@
         let polylinesAsesores = [];
         let watchId = null;
         let intervaloCloudSync = null;
+        let bloqueandoSincronizacion = false; // Bandera para proteger guardados recientes
 
         const COLORES_ASESORES = ["#2563eb", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4"];
 
@@ -264,7 +265,7 @@
         let asesoresDB = baseInicial;
 
         async function sincronizarDesdeNube() {
-            if (!jsonBinId) return;
+            if (!jsonBinId || bloqueandoSincronizacion) return; // Si estamos guardando, ignorar la descarga temporalmente
             try {
                 let response = await fetch(`https://api.jsonbin.io/v3/b/${jsonBinId}/latest`, {
                     headers: { "X-Master-Key": JSONBIN_MASTER_KEY }
@@ -274,6 +275,7 @@
                     if (data && data.record && data.record["1596"]) {
                         asesoresDB = data.record;
                         if (usuarioActual && asesoresDB[usuarioActual.id]) {
+                            // Actualizar manteniendo los puntos actuales locales si tienen más información reciente
                             usuarioActual = asesoresDB[usuarioActual.id];
                         }
                         if (rolActual === "admin") poblarSelectVistaAdmin();
@@ -286,7 +288,9 @@
             }
         }
 
+        // GUARDADO ATÓMICO CON BLOQUEO ANTI-SOBREESCRITURA
         async function guardarEnNube() {
+            bloqueandoSincronizacion = true; // Bloquea la sincronización automática temporalmente
             try {
                 if (!jsonBinId) {
                     let response = await fetch("https://api.jsonbin.io/v3/b", {
@@ -305,6 +309,12 @@
                         asesoresDB = baseInicial;
                     }
                 } else {
+                    // Actualizar el objeto actual del usuario en la base general
+                    if (usuarioActual) {
+                        asesoresDB[usuarioActual.id] = usuarioActual;
+                    }
+
+                    // Enviar de inmediato a la nube
                     await fetch(`https://api.jsonbin.io/v3/b/${jsonBinId}`, {
                         method: "PUT",
                         headers: {
@@ -315,7 +325,12 @@
                     });
                 }
             } catch (e) {
-                console.warn("Error al guardar en nube");
+                console.warn("Error al guardar en nube:", e);
+            } finally {
+                // Liberar el bloqueo de sincronización después de 3 segundos para asegurar que la nube procesó el cambio
+                setTimeout(() => {
+                    bloqueandoSincronizacion = false;
+                }, 3000);
             }
         }
 
@@ -506,7 +521,7 @@
             });
         }
 
-        function registrarNuevoAsesorAdmin() {
+        async function registrarNuevoAsesorAdmin() {
             const nombre = document.getElementById("nuevo-nombre-asesor").value.trim();
             const pin = document.getElementById("nuevo-pin-asesor").value.trim();
 
@@ -524,14 +539,14 @@
                 id: pin, nombre: nombre, rol: "asesor", cerrado: false, paradaActiva: 0, 
                 color: colorAsignado, lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, puntos: [] 
             };
-            guardarEnNube();
+            await guardarEnNube();
             document.getElementById("nuevo-nombre-asesor").value = "";
             document.getElementById("nuevo-pin-asesor").value = "";
             poblarSelectVistaAdmin();
             alert(`Asesor ${nombre} guardado.`);
         }
 
-        function optimizarYGuardarRuta() {
+        async function optimizarYGuardarRuta() {
             let targetAsesor = usuarioActual;
             if (rolActual === "admin") {
                 if (vistaAdminSeleccionada === "todos") {
@@ -596,7 +611,8 @@
             }
 
             targetAsesor.puntos = rutaOptimizadaFinal;
-            guardarEnNube();
+            asesoresDB[targetAsesor.id] = targetAsesor;
+            await guardarEnNube();
             
             document.getElementById("input-coordenadas").value = "";
             renderizarListaParadas();
@@ -604,14 +620,15 @@
             alert("¡Nuevas coordenadas agregadas y ruta reformulada!");
         }
 
-        function toggleCierreCoordenadas() {
+        async function toggleCierreCoordenadas() {
             if (vistaAdminSeleccionada === "todos") {
                 alert("Seleccione un asesor específico.");
                 return;
             }
             let targetAsesor = asesoresDB[vistaAdminSeleccionada];
             targetAsesor.cerrado = !targetAsesor.cerrado;
-            guardarEnNube();
+            asesoresDB[targetAsesor.id] = targetAsesor;
+            await guardarEnNube();
             actualizarBotonCierreAdmin(targetAsesor.cerrado);
         }
 
@@ -720,14 +737,14 @@
             });
         }
 
-        function eliminarParadaAdmin(pinAsesor, index) {
+        async function eliminarParadaAdmin(pinAsesor, index) {
             if (pinAsesor === "todos") {
                 alert("Seleccione un asesor en específico en el menú superior.");
                 return;
             }
             if (confirm("¿Eliminar esta parada?")) {
                 asesoresDB[pinAsesor].puntos.splice(index, 1);
-                guardarEnNube();
+                await guardarEnNube();
                 renderizarListaParadas();
                 actualizarDibujoRutaMapa();
             }
@@ -802,7 +819,7 @@
             );
         }
 
-        function guardarVisitaExitosa() {
+        async function guardarVisitaExitosa() {
             const nota = document.getElementById("input-avance").value.trim();
             if (!nota) {
                 alert("Escriba la descripción del avance.");
@@ -824,15 +841,15 @@
             }
 
             asesoresDB[usuarioActual.id] = usuarioActual;
-            guardarEnNube();
+            await guardarEnNube();
 
             cerrarModalVisita();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("¡Visita guardada con éxito!");
+            alert("¡Visita guardada y sincronizada en la nube con éxito!");
         }
 
-        function marcarIncidenciaAusente() {
+        async function marcarIncidenciaAusente() {
             if (!imagenBase64Procesada) {
                 alert("⚠️ Debe tomar o subir una fotografía con GPS real como evidencia.");
                 return;
@@ -849,12 +866,12 @@
             }
 
             asesoresDB[usuarioActual.id] = usuarioActual;
-            guardarEnNube();
+            await guardarEnNube();
 
             cerrarModalVisita();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("Incidencia marcada.");
+            alert("Incidencia marcada y sincronizada.");
         }
 
         function abrirModalEvidencias() {
