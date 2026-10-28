@@ -31,7 +31,7 @@
                     <i class="fa-solid fa-route"></i>
                 </div>
                 <h1 class="text-2xl font-bold text-slate-900">Mano Amiga - Rutas</h1>
-                <p class="text-sm text-slate-500 mt-1">Agencia Central | Control Global en la Nube</p>
+                <p class="text-sm text-slate-500 mt-1">Agencia Central | Sincronización Real en la Nube</p>
             </div>
 
             <div class="space-y-5">
@@ -224,13 +224,12 @@
         </div>
     </div>
 
-    <!-- LOGICA SCRIPT -->
+    <!-- LOGICA SCRIPT CON NPOINT.IO (CLOUD SYNC COMPARTIDO) -->
     <script>
         const AGENCIA_CENTRAL = { lat: 15.032100742090686, lng: -91.15299656594703 };
         
-        const JSONBIN_MASTER_KEY = "$2a$10$Yz5zDmv0.jYBbwhGg8pqQeanepEv9qArD7RA6/sQy5vS3mMHZQ75q";
-        // ID unificado fijo en la nube para que todos los dispositivos sincronicen con el mismo contenedor
-        const JSONBIN_ID_GLOBAL = "67c29e70acd3cb34a8e3d0cd"; 
+        // URL pública de almacenamiento compartido en la nube (Npoint.io)
+        const CLOUD_URL = "https://api.npoint.io/e0d8a56f87d402170381";
 
         let usuarioActual = null;
         let rolActual = null;
@@ -280,21 +279,17 @@
             return primeraPendiente;
         }
 
-        // Sincronización robusta que descarga siempre el estado global compartido de la nube
+        // Sincronización automática global en tiempo real
         async function sincronizarDesdeNube() {
             if (bloqueandoSincronizacion) return;
             try {
-                let response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID_GLOBAL}/latest`, {
-                    headers: { "X-Master-Key": JSONBIN_MASTER_KEY }
-                });
+                let response = await fetch(CLOUD_URL, { cache: "no-store" });
                 if (response.ok) {
-                    let data = await response.json();
-                    if (data && data.record && data.record["1596"]) {
-                        let nubeDB = data.record;
-                        
-                        // Si el usuario actual está activo, fusionamos sus puntos completados para no perder nada local
-                        if (usuarioActual && nubeDB[usuarioActual.id]) {
-                            let cloudUser = nubeDB[usuarioActual.id];
+                    let cloudData = await response.json();
+                    if (cloudData && cloudData["1596"]) {
+                        // Si el usuario actual está logueado, fusionar manteniendo sus fotos y estados recientes
+                        if (usuarioActual && cloudData[usuarioActual.id]) {
+                            let cloudUser = cloudData[usuarioActual.id];
                             if (usuarioActual.puntos && cloudUser.puntos) {
                                 for (let i = 0; i < usuarioActual.puntos.length; i++) {
                                     if (usuarioActual.puntos[i].estado === "completado" || usuarioActual.puntos[i].estado === "incidencia") {
@@ -304,21 +299,20 @@
                             }
                             cloudUser.paradaActiva = recalcularParadaActiva(cloudUser);
                             usuarioActual = cloudUser;
-                            nubeDB[usuarioActual.id] = usuarioActual;
+                            cloudData[usuarioActual.id] = usuarioActual;
                         }
-                        
-                        asesoresDB = nubeDB;
+                        asesoresDB = cloudData;
                         if (rolActual === "admin") poblarSelectVistaAdmin();
                         renderizarListaParadas();
                         actualizarDibujoRutaMapa();
                     }
                 }
             } catch (e) {
-                console.warn("Error de sincronización, usando caché local.");
+                console.warn("Sincronización en segundo plano con caché local.");
             }
         }
 
-        // Guardado global atómico compartido
+        // Guardado global inmediato compartido en la nube
         async function guardarEnNube() {
             bloqueandoSincronizacion = true;
             try {
@@ -327,13 +321,9 @@
                     asesoresDB[usuarioActual.id] = usuarioActual;
                 }
 
-                // Enviar la base de datos completa unificada al Bin global compartido
-                await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID_GLOBAL}`, {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-Master-Key": JSONBIN_MASTER_KEY
-                    },
+                await fetch(CLOUD_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(asesoresDB)
                 });
             } catch (e) {
@@ -347,18 +337,16 @@
 
         async function inicializarConexionGlobal() {
             try {
-                let res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID_GLOBAL}/latest`, {
-                    headers: { "X-Master-Key": JSONBIN_MASTER_KEY }
-                });
+                let res = await fetch(CLOUD_URL, { cache: "no-store" });
                 if (res.ok) {
                     let json = await res.json();
-                    if (json && json.record && json.record["1596"]) {
-                        asesoresDB = json.record;
+                    if (json && json["1596"]) {
+                        asesoresDB = json;
                         return;
                     }
                 }
             } catch(err) {}
-            // Si el bin global estuviera vacío, se inicializa
+            // Si estuviera vacío, inicializar con la base base
             asesoresDB = baseInicial;
             await guardarEnNube();
         }
@@ -430,7 +418,7 @@
                 renderizarListaParadas();
             }, 200);
 
-            // Sincronización global en tiempo real cada 5 segundos
+            // Sincronización global cada 5 segundos
             intervaloCloudSync = setInterval(async () => {
                 await sincronizarDesdeNube();
             }, 5000);
