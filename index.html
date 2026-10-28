@@ -239,7 +239,7 @@
         let polylinesAsesores = [];
         let watchId = null;
         let intervaloCloudSync = null;
-        let bloqueandoSincronizacion = false; // Bandera para proteger guardados recientes
+        let bloqueandoSincronizacion = false;
 
         const COLORES_ASESORES = ["#2563eb", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4"];
 
@@ -264,8 +264,25 @@
 
         let asesoresDB = baseInicial;
 
+        // Función inteligente para calcular automáticamente la parada activa real sin retroceder completadas
+        function recalcularParadaActiva(usuario) {
+            if (!usuario || !usuario.puntos) return 0;
+            let primeraPendiente = 0;
+            for (let i = 0; i < usuario.puntos.length; i++) {
+                if (usuario.puntos[i].estado === "pendiente" || !usuario.puntos[i].estado) {
+                    primeraPendiente = i;
+                    break;
+                }
+                // Si todas están completadas, apuntar al final
+                if (i === usuario.puntos.length - 1) {
+                    primeraPendiente = usuario.puntos.length;
+                }
+            }
+            return primeraPendiente;
+        }
+
         async function sincronizarDesdeNube() {
-            if (!jsonBinId || bloqueandoSincronizacion) return; // Si estamos guardando, ignorar la descarga temporalmente
+            if (!jsonBinId || bloqueandoSincronizacion) return;
             try {
                 let response = await fetch(`https://api.jsonbin.io/v3/b/${jsonBinId}/latest`, {
                     headers: { "X-Master-Key": JSONBIN_MASTER_KEY }
@@ -275,8 +292,18 @@
                     if (data && data.record && data.record["1596"]) {
                         asesoresDB = data.record;
                         if (usuarioActual && asesoresDB[usuarioActual.id]) {
-                            // Actualizar manteniendo los puntos actuales locales si tienen más información reciente
-                            usuarioActual = asesoresDB[usuarioActual.id];
+                            // Fusionar conservando el estado más avanzado y con fotos guardadas
+                            let nubeUser = asesoresDB[usuarioActual.id];
+                            if (usuarioActual.puntos && nubeUser.puntos) {
+                                for (let i = 0; i < usuarioActual.puntos.length; i++) {
+                                    if (usuarioActual.puntos[i].estado === "completado" || usuarioActual.puntos[i].estado === "incidencia") {
+                                        nubeUser.puntos[i] = usuarioActual.puntos[i]; // Priorizar local si tiene la foto recién tomada
+                                    }
+                                }
+                            }
+                            nubeUser.paradaActiva = recalcularParadaActiva(nubeUser);
+                            usuarioActual = nubeUser;
+                            asesoresDB[usuarioActual.id] = usuarioActual;
                         }
                         if (rolActual === "admin") poblarSelectVistaAdmin();
                         renderizarListaParadas();
@@ -288,10 +315,14 @@
             }
         }
 
-        // GUARDADO ATÓMICO CON BLOQUEO ANTI-SOBREESCRITURA
         async function guardarEnNube() {
-            bloqueandoSincronizacion = true; // Bloquea la sincronización automática temporalmente
+            bloqueandoSincronizacion = true;
             try {
+                if (usuarioActual) {
+                    usuarioActual.paradaActiva = recalcularParadaActiva(usuarioActual);
+                    asesoresDB[usuarioActual.id] = usuarioActual;
+                }
+
                 if (!jsonBinId) {
                     let response = await fetch("https://api.jsonbin.io/v3/b", {
                         method: "POST",
@@ -309,12 +340,6 @@
                         asesoresDB = baseInicial;
                     }
                 } else {
-                    // Actualizar el objeto actual del usuario en la base general
-                    if (usuarioActual) {
-                        asesoresDB[usuarioActual.id] = usuarioActual;
-                    }
-
-                    // Enviar de inmediato a la nube
                     await fetch(`https://api.jsonbin.io/v3/b/${jsonBinId}`, {
                         method: "PUT",
                         headers: {
@@ -327,7 +352,6 @@
             } catch (e) {
                 console.warn("Error al guardar en nube:", e);
             } finally {
-                // Liberar el bloqueo de sincronización después de 3 segundos para asegurar que la nube procesó el cambio
                 setTimeout(() => {
                     bloqueandoSincronizacion = false;
                 }, 3000);
@@ -378,6 +402,7 @@
 
             rolActual = cuenta.rol;
             usuarioActual = cuenta;
+            usuarioActual.paradaActiva = recalcularParadaActiva(usuarioActual);
             iniciarSistemaApp();
         }
 
@@ -487,7 +512,7 @@
 
                 usr.puntos.forEach((p, idx) => {
                     latLngs.push([p.lat, p.lng]);
-                    let colorPin = p.estado === 'completado' ? '#10b981' : (p.estado === 'incidencia' ? '#f59e0b' : colorAsesor);
+                    let colorPin = (p.estado === 'completado') ? '#10b981' : (p.estado === 'incidencia' ? '#f59e0b' : colorAsesor);
                     
                     let pinIcon = L.divIcon({
                         className: 'custom-div-icon',
@@ -611,6 +636,7 @@
             }
 
             targetAsesor.puntos = rutaOptimizadaFinal;
+            targetAsesor.paradaActiva = recalcularParadaActiva(targetAsesor);
             asesoresDB[targetAsesor.id] = targetAsesor;
             await guardarEnNube();
             
@@ -665,7 +691,8 @@
 
             if (rolActual === "asesor") {
                 puntosAMostrar = usuarioActual.puntos || [];
-                paradaActivaIdx = usuarioActual.paradaActiva || 0;
+                usuarioActual.paradaActiva = recalcularParadaActiva(usuarioActual);
+                paradaActivaIdx = usuarioActual.paradaActiva;
             } else {
                 if (vistaAdminSeleccionada === "todos") {
                     Object.keys(asesoresDB).forEach(pin => {
@@ -681,7 +708,7 @@
                     let usr = asesoresDB[vistaAdminSeleccionada];
                     if (usr && usr.puntos) {
                         puntosAMostrar = usr.puntos;
-                        paradaActivaIdx = usr.paradaActiva || 0;
+                        paradaActivaIdx = recalcularParadaActiva(usr);
                         actualizarBotonCierreAdmin(usr.cerrado);
                     }
                 }
@@ -694,8 +721,9 @@
 
             puntosAMostrar.forEach((p, idx) => {
                 p.seq = idx + 1;
-                let esActiva = (idx === paradaActivaIdx && rolActual === "asesor");
-                let estaBloqueada = (idx > paradaActivaIdx && rolActual === "asesor");
+                let esCompletadoOIncidencia = (p.estado === 'completado' || p.estado === 'incidencia');
+                let esActiva = (idx === paradaActivaIdx && rolActual === "asesor" && !esCompletadoOIncidencia);
+                let estaBloqueada = (idx > paradaActivaIdx && rolActual === "asesor" && !esCompletadoOIncidencia);
 
                 let badgeEstado = '';
                 if (p.estado === 'completado') badgeEstado = `<span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-bold">Completado</span>`;
@@ -724,12 +752,12 @@
                     
                     <div class="flex gap-2">
                         <a href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}" target="_blank" 
-                           class="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-center py-2 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${estaBloqueada ? 'opacity-50 pointer-events-none' : ''}">
+                           class="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-center py-2 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${estaBloqueada && !esCompletadoOIncidencia ? 'opacity-50 pointer-events-none' : ''}">
                             <i class="fa-solid fa-diamond-turn-right"></i> Maps
                         </a>
                         <button onclick="abrirModalVisita(${idx})" 
-                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${estaBloqueada ? 'opacity-50 pointer-events-none' : ''} ${rolActual==='admin' ? 'hidden':''}">
-                            <i class="fa-solid fa-camera"></i> Registrar
+                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${estaBloqueada && !esCompletadoOIncidencia ? 'opacity-50 pointer-events-none' : ''} ${rolActual==='admin' ? 'hidden':''}">
+                            <i class="fa-solid fa-camera"></i> ${esCompletadoOIncidencia ? 'Ver / Editar' : 'Registrar'}
                         </button>
                     </div>
                 `;
@@ -744,6 +772,7 @@
             }
             if (confirm("¿Eliminar esta parada?")) {
                 asesoresDB[pinAsesor].puntos.splice(index, 1);
+                asesoresDB[pinAsesor].paradaActiva = recalcularParadaActiva(asesoresDB[pinAsesor]);
                 await guardarEnNube();
                 renderizarListaParadas();
                 actualizarDibujoRutaMapa();
@@ -836,17 +865,14 @@
             puntos[indexParadaSeleccionadaModal].foto = imagenBase64Procesada;
             puntos[indexParadaSeleccionadaModal].hora = new Date().toLocaleString();
 
-            if (usuarioActual.paradaActiva === indexParadaSeleccionadaModal) {
-                usuarioActual.paradaActiva += 1;
-            }
-
+            usuarioActual.paradaActiva = recalcularParadaActiva(usuarioActual);
             asesoresDB[usuarioActual.id] = usuarioActual;
             await guardarEnNube();
 
             cerrarModalVisita();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("¡Visita guardada y sincronizada en la nube con éxito!");
+            alert("¡Visita guardada, bitácora actualizada y sincronizada permanentemente!");
         }
 
         async function marcarIncidenciaAusente() {
@@ -861,17 +887,14 @@
             puntos[indexParadaSeleccionadaModal].foto = imagenBase64Procesada;
             puntos[indexParadaSeleccionadaModal].hora = new Date().toLocaleString();
 
-            if (usuarioActual.paradaActiva === indexParadaSeleccionadaModal) {
-                usuarioActual.paradaActiva += 1;
-            }
-
+            usuarioActual.paradaActiva = recalcularParadaActiva(usuarioActual);
             asesoresDB[usuarioActual.id] = usuarioActual;
             await guardarEnNube();
 
             cerrarModalVisita();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("Incidencia marcada y sincronizada.");
+            alert("Incidencia marcada y sincronizada permanentemente.");
         }
 
         function abrirModalEvidencias() {
