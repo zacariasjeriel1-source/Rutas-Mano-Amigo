@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Rastreo estilo MapQuest - Mano Amiga</title>
+    <title>Sistema de Rastreo Ininterrumpido - Mano Amiga</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Leaflet CSS -->
@@ -39,16 +39,16 @@
                 <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 text-white rounded-2xl shadow-lg mb-4 text-2xl">
                     <i class="fa-solid fa-map-location-dot"></i>
                 </div>
-                <h1 class="text-2xl font-bold text-slate-900">MapQuest - Mano Amiga</h1>
-                <p class="text-sm text-slate-500 mt-1">Rastreo de Flota y Control de Campo en Tiempo Real</p>
+                <h1 class="text-2xl font-bold text-slate-900">Mano Amiga GPS</h1>
+                <p class="text-sm text-slate-500 mt-1">Servidor Delta Sincronizado en Tiempo Real</p>
             </div>
 
             <div class="space-y-5">
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Rol de Usuario</label>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Rol de Acceso</label>
                     <select id="login-role" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 font-medium text-sm">
                         <option value="asesor">Asesor de Campo (PIN)</option>
-                        <option value="admin">Administrador / Central (Clave)</option>
+                        <option value="admin">Administrador / Agencia (Clave)</option>
                     </select>
                 </div>
 
@@ -58,7 +58,7 @@
                 </div>
 
                 <button onclick="intentarLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-500/30 transition flex items-center justify-center gap-2 text-sm">
-                    <i class="fa-solid fa-right-to-bracket"></i> Conectar a la Red
+                    <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión Segura
                 </button>
             </div>
         </div>
@@ -72,13 +72,13 @@
                     <i class="fa-solid fa-satellite-dish text-xl animate-pulse"></i>
                 </div>
                 <div>
-                    <h2 class="font-bold text-lg leading-tight" id="header-title">MapQuest Field Operations</h2>
-                    <p class="text-xs text-slate-400">Servidor Global de Posicionamiento</p>
+                    <h2 class="font-bold text-lg leading-tight" id="header-title">Control de Campo - Mano Amiga</h2>
+                    <p class="text-xs text-slate-400">Agencia Central | Sincronización Delta</p>
                 </div>
             </div>
             <div class="flex items-center gap-3">
                 <span id="indicator-cloud" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs px-3 py-1.5 rounded-xl font-mono flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Nube Online
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Nube Sincronizada
                 </span>
                 <button onclick="abrirModalEvidencias()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow">
                     <i class="fa-solid fa-images"></i> Bitácora
@@ -95,19 +95,19 @@
             <aside class="w-full lg:w-[440px] bg-white border-r border-slate-200 flex flex-col z-20 shadow-lg">
                 <div id="admin-selector-box" class="p-4 bg-slate-50 border-b border-slate-200 hidden space-y-3">
                     <h3 class="font-bold text-xs uppercase text-slate-700 flex items-center gap-2">
-                        <i class="fa-solid fa-users-gear text-blue-600"></i> Control de Flota
+                        <i class="fa-solid fa-users-gear text-blue-600"></i> Selección de Monitoreo
                     </h3>
                     <div>
-                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Monitorear en Mapa</label>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Ver en Mapa:</label>
                         <select id="select-vista-asesor" onchange="cambiarVistaAdmin()" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white font-medium">
-                            <option value="todos">🌍 Ver Todos los Asesores al Mismo Tiempo</option>
+                            <option value="todos">🌍 Ver Todos los Asesores en Simultáneo</option>
                         </select>
                     </div>
 
                     <div class="pt-2 border-t border-slate-200 space-y-2">
-                        <span class="text-[11px] font-bold text-slate-700 block">Registrar Nuevo Asesor</span>
+                        <span class="text-[11px] font-bold text-slate-700 block">Crear Nuevo Perfil</span>
                         <div class="grid grid-cols-2 gap-2">
-                            <input type="text" id="nuevo-nombre-asesor" placeholder="Nombre" class="text-xs p-2 rounded-lg border border-slate-300">
+                            <input type="text" id="nuevo-nombre-asesor" placeholder="Nombre Asesor" class="text-xs p-2 rounded-lg border border-slate-300">
                             <input type="password" id="nuevo-pin-asesor" placeholder="PIN (ej. 4582)" maxlength="6" class="text-xs p-2 rounded-lg border border-slate-300">
                         </div>
                         <button onclick="registrarNuevoAsesorAdmin()" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 rounded-lg transition">
@@ -130,7 +130,7 @@
 
                     <div class="grid grid-cols-2 gap-2">
                         <button onclick="optimizarYGuardarRuta()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md">
-                            <i class="fa-solid fa-plus-circle"></i> Asignar a Asesor
+                            <i class="fa-solid fa-plus-circle"></i> Asignar Ruta
                         </button>
                         <button onclick="exportarReporteExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md">
                             <i class="fa-solid fa-file-excel"></i> Exportar CSV
@@ -139,7 +139,7 @@
 
                     <div id="admin-lock-container" class="hidden pt-2 border-t border-slate-100">
                         <button id="btn-toggle-lock" onclick="toggleCierreCoordenadas()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow">
-                            <i class="fa-solid fa-lock"></i> Bloquear Edición de Ruta
+                            <i class="fa-solid fa-lock"></i> Bloquear Edición
                         </button>
                     </div>
                 </div>
@@ -147,16 +147,16 @@
                 <!-- Telemetría Dinámica GPS -->
                 <div id="info-posicion-envivo" class="px-5 py-3 bg-slate-900 text-white text-xs space-y-1">
                     <div class="flex justify-between items-center font-bold">
-                        <span class="text-slate-300"><i class="fa-solid fa-satellite text-blue-400"></i> Estado GPS:</span>
-                        <span id="txt-ultima-act" class="text-emerald-400 font-mono">Conectando...</span>
+                        <span class="text-slate-300"><i class="fa-solid fa-satellite text-blue-400"></i> Telemetría GPS:</span>
+                        <span id="txt-ultima-act" class="text-emerald-400 font-mono">Cargando...</span>
                     </div>
-                    <div class="font-mono text-[11px] text-slate-400" id="txt-coords-envivo">Esperando señal de transmisión...</div>
+                    <div class="font-mono text-[11px] text-slate-400" id="txt-coords-envivo">Buscando señal GPS...</div>
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50" id="lista-paradas"></div>
             </aside>
 
-            <!-- Mapa Principal MapQuest -->
+            <!-- Mapa Principal Leaflet -->
             <main class="flex-1 relative flex flex-col">
                 <div class="absolute top-4 right-4 z-[400] bg-slate-900/90 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-6">
                     <div class="text-center">
@@ -166,13 +166,13 @@
                     </div>
                     <div class="h-8 w-px bg-slate-700"></div>
                     <div class="text-center">
-                        <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-bold">A Siguiente Destino</span>
+                        <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-bold">Próximo Destino</span>
                         <span id="waze-distance" class="text-xl font-bold text-blue-400">0</span>
                         <span class="text-xs text-slate-300">m</span>
                     </div>
                     <div class="h-8 w-px bg-slate-700"></div>
                     <button id="btn-gps-toggle" onclick="activarGPSReal()" class="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
-                        <i class="fa-solid fa-location-crosshairs"></i> Activar Transmisión
+                        <i class="fa-solid fa-location-crosshairs"></i> Activar Transmisión GPS
                     </button>
                 </div>
 
@@ -186,14 +186,14 @@
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-3">
                 <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-camera-retro text-blue-600"></i> Registrar Evidencia
+                    <i class="fa-solid fa-camera-retro text-blue-600"></i> Captura de Evidencia en Campo
                 </h3>
                 <button onclick="cerrarModalVisita()" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Fotografía Obligatoria</label>
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Fotografía Obligatoria con GPS Stamp</label>
                     <input type="file" id="input-foto" accept="image/*" capture="environment" onchange="procesarFotoConGPSReal(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 border border-slate-200 rounded-xl p-2">
                 </div>
 
@@ -201,18 +201,18 @@
                     <canvas id="canvas-preview" class="max-h-56 mx-auto rounded-lg hidden shadow-md"></canvas>
                     <div id="placeholder-foto" class="py-8 text-slate-400 text-xs">
                         <i class="fa-solid fa-image text-3xl mb-2 text-slate-300"></i>
-                        <p>Tome la foto. Se estamparán la fecha, hora y coordenadas GPS reales del asesor.</p>
+                        <p>Tome la fotografía en el lugar. Se estampará la hora y las coordenadas exactas.</p>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Observaciones</label>
-                    <textarea id="input-avance" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Escriba los detalles del cobro o visita..."></textarea>
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Observaciones / Avance</label>
+                    <textarea id="input-avance" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Escriba los detalles de la visita o gestión..."></textarea>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3 pt-2">
                     <button onclick="guardarVisitaExitosa()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-xs shadow transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-circle-check"></i> Guardar Visita
+                        <i class="fa-solid fa-circle-check"></i> Registrar Visita
                     </button>
                     <button onclick="marcarIncidenciaAusente()" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl text-xs shadow transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-triangle-exclamation"></i> Cliente Ausente
@@ -228,13 +228,13 @@
             <div class="flex justify-between items-center border-b pb-3 no-print">
                 <div>
                     <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
-                        <i class="fa-solid fa-book-open text-emerald-600"></i> Bitácora General de Campo
+                        <i class="fa-solid fa-book-open text-emerald-600"></i> Bitácora Consolidada
                     </h3>
-                    <p class="text-xs text-slate-500">Sincronización unificada de fotografías y visitas.</p>
+                    <p class="text-xs text-slate-500">Historial completo de visitas con estampados GPS verificados.</p>
                 </div>
                 <div class="flex gap-2">
                     <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow">
-                        <i class="fa-solid fa-print"></i> Imprimir Reporte PDF
+                        <i class="fa-solid fa-print"></i> Exportar a PDF
                     </button>
                     <button onclick="cerrarModalEvidencias()" class="text-slate-400 hover:text-slate-600 text-xl px-2"><i class="fa-solid fa-xmark"></i></button>
                 </div>
@@ -258,12 +258,14 @@
         let watchId = null;
         let intervaloCloudSync = null;
 
+        let editandoLocalmente = false; // Bloquea sobreescrituras si el usuario está interactuando
+
         const COLORES_ASESORES = ["#2563eb", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4"];
 
         const baseInicial = {
             "1596": { id: "1596", nombre: "Administrador Central", rol: "admin", color: "#1e293b", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] },
-            "1346": { id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#2563eb", lat: null, lng: null, ultimaHoraGps: "Esperando señal...", historial: [], puntos: [] },
-            "7946": { id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#10b981", lat: null, lng: null, ultimaHoraGps: "Esperando señal...", historial: [], puntos: [] }
+            "1346": { id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#2563eb", lat: null, lng: null, ultimaHoraGps: "Sin señal", historial: [], puntos: [] },
+            "7946": { id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#10b981", lat: null, lng: null, ultimaHoraGps: "Sin señal", historial: [], puntos: [] }
         };
 
         let asesoresDB = baseInicial;
@@ -283,26 +285,37 @@
             return primeraPendiente;
         }
 
-        // MOTOR DE FUSIÓN ATÓMICA DE DATOS
+        // MOTOR DE SINCRONIZACIÓN DELTA
         async function sincronizarDesdeNube() {
+            if (editandoLocalmente) return;
             try {
-                let response = await fetch(CLOUD_URL, { cache: "no-store" });
+                let response = await fetch(`${CLOUD_URL}?t=${Date.now()}`, { cache: "no-store" });
                 if (response.ok) {
                     let cloudData = await response.json();
                     if (cloudData && cloudData["1596"]) {
                         
-                        // Fusión diferencial por usuario
                         Object.keys(cloudData).forEach(pin => {
                             if (!asesoresDB[pin]) {
                                 asesoresDB[pin] = cloudData[pin];
                             } else {
-                                // Preservar o actualizar según el rol activo
+                                // Si soy Asesor, mantengo mi posición GPS fresca si está pendiente de subir
                                 if (usuarioActual && usuarioActual.id === pin && rolActual === "asesor") {
-                                    // El asesor actual tiene prioridad sobre su propia ubicación GPS
-                                    cloudData[pin].lat = usuarioActual.lat || cloudData[pin].lat;
-                                    cloudData[pin].lng = usuarioActual.lng || cloudData[pin].lng;
-                                    cloudData[pin].ultimaHoraGps = usuarioActual.ultimaHoraGps || cloudData[pin].ultimaHoraGps;
-                                    cloudData[pin].historial = usuarioActual.historial || cloudData[pin].historial;
+                                    let misPuntosRemotos = cloudData[pin].puntos || [];
+                                    
+                                    // Preservar visitas completadas localmente
+                                    if (usuarioActual.puntos) {
+                                        usuarioActual.puntos.forEach((pLocal, i) => {
+                                            if ((pLocal.estado === 'completado' || pLocal.estado === 'incidencia') && misPuntosRemotos[i]) {
+                                                misPuntosRemotos[i] = pLocal;
+                                            }
+                                        });
+                                    }
+
+                                    cloudData[pin].puntos = misPuntosRemotos;
+                                    if (usuarioActual.lat) cloudData[pin].lat = usuarioActual.lat;
+                                    if (usuarioActual.lng) cloudData[pin].lng = usuarioActual.lng;
+                                    if (usuarioActual.ultimaHoraGps) cloudData[pin].ultimaHoraGps = usuarioActual.ultimaHoraGps;
+                                    if (usuarioActual.historial) cloudData[pin].historial = usuarioActual.historial;
                                 }
                                 asesoresDB[pin] = cloudData[pin];
                             }
@@ -317,31 +330,44 @@
                     }
                 }
             } catch (e) {
-                console.warn("Reintentando sincronización de nube...");
+                console.warn("Reintentando conexión con la nube...");
             }
         }
 
-        async function enviarActualizacionesANube() {
+        // ENVÍO NO DESTRUCTIVO A LA NUBE
+        async function guardarPropiedadesEspecificas(pin, cambios) {
+            editandoLocalmente = true;
             try {
-                // Obtener copia fresca antes de enviar para no borrar cambios del otro extremo
-                let res = await fetch(CLOUD_URL, { cache: "no-store" });
-                let currentCloud = res.ok ? await res.json() : {};
+                let res = await fetch(`${CLOUD_URL}?t=${Date.now()}`, { cache: "no-store" });
+                let nubeActual = res.ok ? await res.json() : asesoresDB;
 
-                let payloadFinal = { ...currentCloud, ...asesoresDB };
+                if (!nubeActual[pin]) nubeActual[pin] = asesoresDB[pin] || {};
+
+                // Aplicar sólo las propiedades específicas recibidas
+                Object.keys(cambios).forEach(prop => {
+                    nubeActual[pin][prop] = cambios[prop];
+                });
+
+                nubeActual[pin].paradaActiva = recalcularParadaActiva(nubeActual[pin]);
 
                 await fetch(CLOUD_URL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payloadFinal)
+                    body: JSON.stringify(nubeActual)
                 });
+
+                asesoresDB = nubeActual;
+                if (usuarioActual && usuarioActual.id === pin) usuarioActual = asesoresDB[pin];
             } catch (e) {
-                console.warn("Error enviando actualización a nube:", e);
+                console.error("Error guardando en la nube:", e);
+            } finally {
+                setTimeout(() => { editandoLocalmente = false; }, 800);
             }
         }
 
         async function inicializarConexionGlobal() {
             try {
-                let res = await fetch(CLOUD_URL, { cache: "no-store" });
+                let res = await fetch(`${CLOUD_URL}?t=${Date.now()}`, { cache: "no-store" });
                 if (res.ok) {
                     let json = await res.json();
                     if (json && json["1596"]) {
@@ -351,7 +377,7 @@
                 }
             } catch(err) {}
             asesoresDB = baseInicial;
-            await enviarActualizacionesANube();
+            await guardarPropiedadesEspecificas("1596", { rol: "admin" });
         }
 
         inicializarConexionGlobal();
@@ -396,7 +422,7 @@
             document.getElementById("input-coordenadas").value = "";
 
             if (rolActual === "admin") {
-                document.getElementById("header-title").innerText = "Panel Gerencial MapQuest";
+                document.getElementById("header-title").innerText = "Panel Gerencial Central";
                 document.getElementById("user-badge").innerText = "Admin Central (1596)";
                 document.getElementById("admin-controls-box").style.display = "block";
                 document.getElementById("admin-selector-box").style.display = "block";
@@ -416,7 +442,6 @@
                 if (rolActual === "asesor") activarGPSReal();
             }, 200);
 
-            // Bucle constante de sincronización cada 2.5 segundos
             intervaloCloudSync = setInterval(async () => {
                 await sincronizarDesdeNube();
             }, 2500);
@@ -425,7 +450,7 @@
         function poblarSelectVistaAdmin() {
             const select = document.getElementById("select-vista-asesor");
             let valActual = select.value || "todos";
-            select.innerHTML = `<option value="todos">🌍 Ver Todos los Asesores al Mismo Tiempo</option>`;
+            select.innerHTML = `<option value="todos">🌍 Ver Todos los Asesores en Simultáneo</option>`;
             Object.keys(asesoresDB).forEach(pin => {
                 let usr = asesoresDB[pin];
                 if (usr && usr.rol === "asesor") {
@@ -451,8 +476,8 @@
                 if (vistaAdminSeleccionada !== "todos" && asesoresDB[vistaAdminSeleccionada]) {
                     target = asesoresDB[vistaAdminSeleccionada];
                 } else {
-                    document.getElementById("txt-ultima-act").innerText = "Monitoreo Multidispositivo";
-                    document.getElementById("txt-coords-envivo").innerText = "Rastreando todas las unidades activas en el mapa";
+                    document.getElementById("txt-ultima-act").innerText = "Monitoreo General";
+                    document.getElementById("txt-coords-envivo").innerText = "Sincronizando todas las unidades en tiempo real";
                     return;
                 }
             }
@@ -461,8 +486,8 @@
                 document.getElementById("txt-ultima-act").innerText = target.ultimaHoraGps || "Transmitiendo...";
                 document.getElementById("txt-coords-envivo").innerText = `Lat: ${target.lat.toFixed(6)}, Lng: ${target.lng.toFixed(6)}`;
             } else {
-                document.getElementById("txt-ultima-act").innerText = "Esperando reporte...";
-                document.getElementById("txt-coords-envivo").innerText = "El asesor aún no activa la transmisión GPS";
+                document.getElementById("txt-ultima-act").innerText = "Esperando señal...";
+                document.getElementById("txt-coords-envivo").innerText = "El asesor aún no activa el GPS en su dispositivo";
             }
         }
 
@@ -506,7 +531,7 @@
                 if (!usr) return;
                 let colorAsesor = usr.color || COLORES_ASESORES[index % COLORES_ASESORES.length];
 
-                // 1. Dibujar paradas asignadas
+                // 1. Dibujar puntos asignados
                 if (usr.puntos && usr.puntos.length > 0) {
                     let latLngsRuta = [[AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]];
                     usr.puntos.forEach((p, idx) => {
@@ -537,7 +562,7 @@
                     polylinesAsesores.push(lineaTrayectoria);
                 }
 
-                // 3. Marcador dinámico en vivo del Asesor
+                // 3. Posición en vivo
                 if (usr.lat && usr.lng) {
                     let motoIcon = L.divIcon({
                         className: 'custom-div-icon',
@@ -548,7 +573,7 @@
                     if (marcadoresAsesores[usr.id]) {
                         marcadoresAsesores[usr.id].setLatLng([usr.lat, usr.lng]);
                     } else {
-                        let m = L.marker([usr.lat, usr.lng], { icon: motoIcon }).addTo(map).bindPopup(`<b>${usr.nombre}</b><br>Transmitiendo ubicación en vivo`);
+                        let m = L.marker([usr.lat, usr.lng], { icon: motoIcon }).addTo(map).bindPopup(`<b>${usr.nombre}</b><br>Ubicación reportada en vivo`);
                         marcadoresAsesores[usr.id] = m;
                     }
                 }
@@ -560,45 +585,48 @@
             const pin = document.getElementById("nuevo-pin-asesor").value.trim();
 
             if (!nombre || !pin) {
-                alert("Complete el nombre y el PIN.");
-                return;
-            }
-            if (asesoresDB[pin]) {
-                alert("Este PIN ya se encuentra registrado.");
+                alert("Ingrese el nombre y PIN.");
                 return;
             }
 
             let colorAsignado = COLORES_ASESORES[Object.keys(asesoresDB).length % COLORES_ASESORES.length];
-            asesoresDB[pin] = { 
+            let nuevoObj = { 
                 id: pin, nombre: nombre, rol: "asesor", cerrado: false, paradaActiva: 0, 
                 color: colorAsignado, lat: null, lng: null,
-                ultimaHoraGps: "Esperando transmisión", historial: [], puntos: [] 
+                ultimaHoraGps: "Esperando señal", historial: [], puntos: [] 
             };
-            await enviarActualizacionesANube();
+            
+            await guardarPropiedadesEspecificas(pin, nuevoObj);
             document.getElementById("nuevo-nombre-asesor").value = "";
             document.getElementById("nuevo-pin-asesor").value = "";
             poblarSelectVistaAdmin();
-            alert(`Asesor ${nombre} agregado exitosamente.`);
+            alert(`Asesor ${nombre} guardado.`);
         }
 
         async function optimizarYGuardarRuta() {
-            let targetAsesor = usuarioActual;
+            let targetPin = usuarioActual ? usuarioActual.id : null;
             if (rolActual === "admin") {
                 if (vistaAdminSeleccionada === "todos") {
-                    alert("Seleccione un asesor específico de la lista.");
-                    return;
+                    let seleccion = prompt("Ingrese el PIN del Asesor al cual asignar la ruta:");
+                    if (!seleccion || !asesoresDB[seleccion]) {
+                        alert("PIN no válido o asesor no encontrado.");
+                        return;
+                    }
+                    targetPin = seleccion;
+                } else {
+                    targetPin = vistaAdminSeleccionada;
                 }
-                targetAsesor = asesoresDB[vistaAdminSeleccionada];
             }
 
+            let targetAsesor = asesoresDB[targetPin];
             if (targetAsesor.cerrado) {
-                alert("⚠️ Las coordenadas de esta ruta están bloqueadas.");
+                alert("⚠️ Las coordenadas de esta ruta están cerradas.");
                 return;
             }
 
             const textoCoords = document.getElementById("input-coordenadas").value.trim();
             if (!textoCoords) {
-                alert("Ingrese coordenadas válidas.");
+                alert("Ingrese coordenadas en formato Latitud, Longitud.");
                 return;
             }
 
@@ -645,28 +673,24 @@
                 noVisitados.splice(masCercanoIdx, 1);
             }
 
-            targetAsesor.puntos = rutaOptimizadaFinal;
-            targetAsesor.paradaActiva = recalcularParadaActiva(targetAsesor);
-            asesoresDB[targetAsesor.id] = targetAsesor;
-            
-            await enviarActualizacionesANube();
+            // Solo guardamos el arreglo de PUNTOS para no afectar el GPS del asesor
+            await guardarPropiedadesEspecificas(targetPin, { puntos: rutaOptimizadaFinal });
             
             document.getElementById("input-coordenadas").value = "";
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("¡Coordenadas asignadas e inmediatamente visibles para el asesor!");
+            alert(`¡Ruta enviada correctamente al Asesor (PIN: ${targetPin})!`);
         }
 
         async function toggleCierreCoordenadas() {
             if (vistaAdminSeleccionada === "todos") {
-                alert("Seleccione un asesor específico.");
+                alert("Seleccione un asesor específico en la lista.");
                 return;
             }
             let targetAsesor = asesoresDB[vistaAdminSeleccionada];
-            targetAsesor.cerrado = !targetAsesor.cerrado;
-            asesoresDB[targetAsesor.id] = targetAsesor;
-            await enviarActualizacionesANube();
-            actualizarBotonCierreAdmin(targetAsesor.cerrado);
+            let nuevoEstado = !targetAsesor.cerrado;
+            await guardarPropiedadesEspecificas(vistaAdminSeleccionada, { cerrado: nuevoEstado });
+            actualizarBotonCierreAdmin(nuevoEstado);
         }
 
         function actualizarBotonCierreAdmin(cerrado) {
@@ -677,7 +701,7 @@
                 badge.innerText = "Cerrada";
                 badge.className = "text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded font-bold";
             } else {
-                btn.innerHTML = `<i class="fa-solid fa-lock"></i> Bloquear Edición de Ruta`;
+                btn.innerHTML = `<i class="fa-solid fa-lock"></i> Bloquear Edición`;
                 badge.innerText = "Abierta";
                 badge.className = "text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold";
             }
@@ -726,7 +750,7 @@
             }
 
             if (puntosAMostrar.length === 0) {
-                contenedor.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs"><i class="fa-solid fa-route text-3xl mb-2"></i><p>Sin paradas registradas en el perfil.</p></div>`;
+                contenedor.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs"><i class="fa-solid fa-route text-3xl mb-2"></i><p>Sin coordenadas cargadas actualmente.</p></div>`;
                 return;
             }
 
@@ -782,9 +806,9 @@
                 return;
             }
             if (confirm("¿Eliminar esta parada?")) {
-                asesoresDB[pinAsesor].puntos.splice(index, 1);
-                asesoresDB[pinAsesor].paradaActiva = recalcularParadaActiva(asesoresDB[pinAsesor]);
-                await enviarActualizacionesANube();
+                let nuevosPuntos = [...asesoresDB[pinAsesor].puntos];
+                nuevosPuntos.splice(index, 1);
+                await guardarPropiedadesEspecificas(pinAsesor, { puntos: nuevosPuntos });
                 renderizarListaParadas();
                 actualizarDibujoRutaMapa();
             }
@@ -794,6 +818,7 @@
         let imagenBase64Procesada = "";
 
         function abrirModalVisita(idx) {
+            editandoLocalmente = true;
             indexParadaSeleccionadaModal = idx;
             document.getElementById("input-avance").value = "";
             document.getElementById("input-foto").value = "";
@@ -804,6 +829,7 @@
         }
 
         function cerrarModalVisita() {
+            editandoLocalmente = false;
             document.getElementById("modal-visita").classList.add("hidden");
         }
 
@@ -812,7 +838,7 @@
             if (!file) return;
 
             if (!navigator.geolocation) {
-                alert("GPS no disponible.");
+                alert("Geolocalización no soportada.");
                 return;
             }
 
@@ -835,7 +861,7 @@
                             const ahora = new Date();
                             const fechaHora = ahora.toLocaleString('es-GT', { dateStyle: 'short', timeStyle: 'medium' });
                             
-                            const textoMarcaAgua = `MapQuest | ${fechaHora} | GPS: ${latReal.toFixed(5)}, ${lngReal.toFixed(5)}`;
+                            const textoMarcaAgua = `Mano Amiga | ${fechaHora} | GPS: ${latReal.toFixed(5)}, ${lngReal.toFixed(5)}`;
 
                             ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
                             ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
@@ -854,7 +880,7 @@
                     reader.readAsDataURL(file);
                 },
                 (error) => {
-                    alert("⚠️ Habilite el permiso GPS para la fotografía.");
+                    alert("⚠️ Active el GPS para incluir la ubicación exacta en la foto.");
                 },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
@@ -863,7 +889,7 @@
         async function guardarVisitaExitosa() {
             const nota = document.getElementById("input-avance").value.trim();
             if (!nota) {
-                alert("Escriba las observaciones.");
+                alert("Escriba la descripción de la visita.");
                 return;
             }
             if (!imagenBase64Procesada) {
@@ -871,20 +897,18 @@
                 return;
             }
 
-            let puntos = usuarioActual.puntos;
-            puntos[indexParadaSeleccionadaModal].estado = "completado";
-            puntos[indexParadaSeleccionadaModal].nota = nota;
-            puntos[indexParadaSeleccionadaModal].foto = imagenBase64Procesada;
-            puntos[indexParadaSeleccionadaModal].hora = new Date().toLocaleString();
+            let puntosActualizados = [...usuarioActual.puntos];
+            puntosActualizados[indexParadaSeleccionadaModal].estado = "completado";
+            puntosActualizados[indexParadaSeleccionadaModal].nota = nota;
+            puntosActualizados[indexParadaSeleccionadaModal].foto = imagenBase64Procesada;
+            puntosActualizados[indexParadaSeleccionadaModal].hora = new Date().toLocaleString();
 
-            usuarioActual.paradaActiva = recalcularParadaActiva(usuarioActual);
-            asesoresDB[usuarioActual.id] = usuarioActual;
-            await enviarActualizacionesANube();
+            await guardarPropiedadesEspecificas(usuarioActual.id, { puntos: puntosActualizados });
 
             cerrarModalVisita();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("¡Visita completada e inmutablemente guardada!");
+            alert("¡Visita registrada y sincronizada!");
         }
 
         async function marcarIncidenciaAusente() {
@@ -893,15 +917,13 @@
                 return;
             }
 
-            let puntos = usuarioActual.puntos;
-            puntos[indexParadaSeleccionadaModal].estado = "incidencia";
-            puntos[indexParadaSeleccionadaModal].nota = "Cliente Ausente";
-            puntos[indexParadaSeleccionadaModal].foto = imagenBase64Procesada;
-            puntos[indexParadaSeleccionadaModal].hora = new Date().toLocaleString();
+            let puntosActualizados = [...usuarioActual.puntos];
+            puntosActualizados[indexParadaSeleccionadaModal].estado = "incidencia";
+            puntosActualizados[indexParadaSeleccionadaModal].nota = "Cliente Ausente";
+            puntosActualizados[indexParadaSeleccionadaModal].foto = imagenBase64Procesada;
+            puntosActualizados[indexParadaSeleccionadaModal].hora = new Date().toLocaleString();
 
-            usuarioActual.paradaActiva = recalcularParadaActiva(usuarioActual);
-            asesoresDB[usuarioActual.id] = usuarioActual;
-            await enviarActualizacionesANube();
+            await guardarPropiedadesEspecificas(usuarioActual.id, { puntos: puntosActualizados });
 
             cerrarModalVisita();
             renderizarListaParadas();
@@ -927,7 +949,7 @@
             });
 
             if (registrosConFoto.length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 text-sm"><i class="fa-solid fa-camera text-4xl mb-2"></i><p>Aún no hay visitas con evidencia registrada en la nube.</p></div>`;
+                grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 text-sm"><i class="fa-solid fa-camera text-4xl mb-2"></i><p>Sin visitas fotografiadas aún.</p></div>`;
             } else {
                 registrosConFoto.forEach(reg => {
                     let card = document.createElement("div");
@@ -946,7 +968,7 @@
                             </div>
                             <div class="pt-2 border-t border-slate-200 flex justify-between items-center text-xs text-slate-500 font-mono">
                                 <span>📍 Ubicación GPS: ${reg.lat.toFixed(4)}, ${reg.lng.toFixed(4)}</span>
-                                <a href="https://www.google.com/maps?q=${reg.lat},${reg.lng}" target="_blank" class="text-blue-600 font-bold hover:underline">Ver en Mapa</a>
+                                <a href="https://www.google.com/maps?q=${reg.lat},${reg.lng}" target="_blank" class="text-blue-600 font-bold hover:underline">Ver Mapa</a>
                             </div>
                         </div>
                     `;
@@ -961,10 +983,10 @@
             document.getElementById("modal-evidencias").classList.add("hidden");
         }
 
-        // BUCLE GPS ININTERRUMPIDO
+        // TRANSMISIÓN GPS ISOLADA (SOLO ENVÍA LAT, LNG E HISTORIAL)
         function activarGPSReal() {
             if (!navigator.geolocation) {
-                alert("GPS no disponible en este dispositivo.");
+                alert("GPS no soportado.");
                 return;
             }
 
@@ -992,8 +1014,14 @@
                             usuarioActual.historial.push([lat, lng]);
                         }
 
-                        asesoresDB[usuarioActual.id] = usuarioActual;
-                        await enviarActualizacionesANube();
+                        // Enviar ÚNICAMENTE posición GPS al servidor
+                        await guardarPropiedadesEspecificas(usuarioActual.id, {
+                            lat: lat,
+                            lng: lng,
+                            ultimaHoraGps: usuarioActual.ultimaHoraGps,
+                            historial: usuarioActual.historial
+                        });
+
                         actualizarDibujoRutaMapa();
                         actualizarPanelTelemetria();
                     }
@@ -1006,7 +1034,7 @@
                     }
                 },
                 (err) => { 
-                    console.warn("Reintentando señal GPS...");
+                    console.warn("Recuperando GPS...");
                 },
                 { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
             );
@@ -1027,7 +1055,7 @@
             let url = URL.createObjectURL(blob);
             let a = document.createElement('a');
             a.setAttribute('href', url);
-            a.setAttribute('download', `Reporte_MapQuest_${new Date().toISOString().slice(0,10)}.csv`);
+            a.setAttribute('download', `Bitacora_ManoAmiga_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
