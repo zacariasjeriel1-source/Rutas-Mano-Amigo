@@ -1,9 +1,10 @@
+```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Rutas y Cobranza - Mano Amiga</title>
+    <title>Gestión de Rutas y Rastreo - Mano Amiga</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Leaflet CSS -->
@@ -31,12 +32,12 @@
                     <i class="fa-solid fa-route"></i>
                 </div>
                 <h1 class="text-2xl font-bold text-slate-900">Mano Amiga - Rutas</h1>
-                <p class="text-sm text-slate-500 mt-1">Agencia Central | Sincronización Real en la Nube</p>
+                <p class="text-sm text-slate-500 mt-1">Control Global de Asesores y Rastreo GPS</p>
             </div>
 
             <div class="space-y-5">
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Seleccione Tipo de Acceso</label>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Tipo de Acceso</label>
                     <select id="login-role" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50">
                         <option value="asesor">Asesor de Crédito (PIN)</option>
                         <option value="admin">Administrador (Clave Única)</option>
@@ -44,7 +45,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Ingrese Código PIN / Contraseña</label>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Código PIN / Contraseña</label>
                     <input type="password" id="login-pass" maxlength="6" placeholder="••••" class="w-full text-center text-2xl tracking-widest px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50">
                 </div>
 
@@ -63,7 +64,7 @@
                     <i class="fa-solid fa-map-location-dot text-xl"></i>
                 </div>
                 <div>
-                    <h2 class="font-bold text-lg leading-tight" id="header-title">Panel de Control de Ruta</h2>
+                    <h2 class="font-bold text-lg leading-tight" id="header-title">Panel de Control y Rastreo</h2>
                     <p class="text-xs text-slate-400">Agencia Central - Santa Cruz del Quiché</p>
                 </div>
             </div>
@@ -83,7 +84,7 @@
             <aside class="w-full lg:w-[440px] bg-white border-r border-slate-200 flex flex-col z-20 shadow-lg">
                 <div id="admin-selector-box" class="p-4 bg-slate-50 border-b border-slate-200 hidden space-y-3">
                     <h3 class="font-bold text-xs uppercase text-slate-700 flex items-center gap-2">
-                        <i class="fa-solid fa-users-gear text-blue-600"></i> Panel de Administración
+                        <i class="fa-solid fa-users-gear text-blue-600"></i> Panel de Supervisión
                     </h3>
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-600 mb-1">Filtrar Vista por Asesor</label>
@@ -107,19 +108,19 @@
                 <div class="p-5 border-b border-slate-100 space-y-4" id="admin-controls-box">
                     <div class="flex justify-between items-center">
                         <h3 class="font-bold text-slate-900 flex items-center gap-2">
-                            <i class="fa-solid fa-list-check text-blue-600"></i> Gestión de Coordenadas
+                            <i class="fa-solid fa-list-check text-blue-600"></i> Cargar Coordenadas de Ruta
                         </h3>
                         <span id="lock-status-badge" class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">Ruta Abierta</span>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Agregar Nuevas Coordenadas (Lat, Lng)</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Ingresar Coordenadas (Lat, Lng)</label>
                         <textarea id="input-coordenadas" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none font-mono bg-slate-50" placeholder="15.0350, -91.1500&#10;15.0400, -91.1600"></textarea>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
                         <button onclick="optimizarYGuardarRuta()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md">
-                            <i class="fa-solid fa-plus-circle"></i> Agregar y Reformular
+                            <i class="fa-solid fa-plus-circle"></i> Asignar y Reformular
                         </button>
                         <button onclick="exportarReporteExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md">
                             <i class="fa-solid fa-file-excel"></i> Exportar CSV
@@ -152,7 +153,7 @@
                     </div>
                     <div class="h-8 w-px bg-slate-700"></div>
                     <button onclick="activarGPSReal()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
-                        <i class="fa-solid fa-location-crosshairs"></i> GPS
+                        <i class="fa-solid fa-location-crosshairs"></i> Activar Transmisión GPS
                     </button>
                 </div>
 
@@ -166,14 +167,14 @@
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-3">
                 <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-camera-retro text-blue-600"></i> Captura de Evidencia
+                    <i class="fa-solid fa-camera-retro text-blue-600"></i> Captura de Evidencia de Visita
                 </h3>
                 <button onclick="cerrarModalVisita()" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Fotografía Obligatoria (Usa tu GPS Actual)</label>
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Fotografía Obligatoria con GPS</label>
                     <input type="file" id="input-foto" accept="image/*" capture="environment" onchange="procesarFotoConGPSReal(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-slate-200 rounded-xl p-2">
                 </div>
 
@@ -181,18 +182,18 @@
                     <canvas id="canvas-preview" class="max-h-56 mx-auto rounded-lg hidden shadow-md"></canvas>
                     <div id="placeholder-foto" class="py-8 text-slate-400 text-xs">
                         <i class="fa-solid fa-image text-3xl mb-2 text-slate-300"></i>
-                        <p>Tome la foto. Se estampará automáticamente la fecha, hora y su **ubicación GPS real en el lugar**.</p>
+                        <p>Tome la foto. Se estampará automáticamente la fecha, hora y ubicación GPS real.</p>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Descripción de la Visita / Avance</label>
-                    <textarea id="input-avance" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Escriba los detalles del abono o resultado de la visita..."></textarea>
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Descripción / Observaciones</label>
+                    <textarea id="input-avance" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Escriba el resultado de la visita o cobro..."></textarea>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3 pt-2">
                     <button onclick="guardarVisitaExitosa()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-xs shadow transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-circle-check"></i> Guardar Visita
+                        <i class="fa-solid fa-circle-check"></i> Registrar Completada
                     </button>
                     <button onclick="marcarIncidenciaAusente()" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl text-xs shadow transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-triangle-exclamation"></i> Cliente Ausente
@@ -208,9 +209,9 @@
             <div class="flex justify-between items-center border-b pb-3 no-print">
                 <div>
                     <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
-                        <i class="fa-solid fa-book-open text-emerald-600"></i> Bitácora Oficial de Campo
+                        <i class="fa-solid fa-book-open text-emerald-600"></i> Bitácora General de Campo
                     </h3>
-                    <p class="text-xs text-slate-500">Registro con fotos, marca de agua de tiempo y coordenadas reales.</p>
+                    <p class="text-xs text-slate-500">Historial completo de visitas registradas en el día.</p>
                 </div>
                 <div class="flex gap-2">
                     <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow">
@@ -224,12 +225,12 @@
         </div>
     </div>
 
-    <!-- LOGICA SCRIPT CON NPOINT.IO (CLOUD SYNC COMPARTIDO) -->
     <script>
         const AGENCIA_CENTRAL = { lat: 15.032100742090686, lng: -91.15299656594703 };
         
-        // URL pública de almacenamiento compartido en la nube (Npoint.io)
-        const CLOUD_URL = "https://api.npoint.io/e0d8a56f87d402170381";
+        // Servidor único central para sincronizar todos los dispositivos sin bloqueos
+        const JSONBLOB_ID = "1343750244670078976";
+        const CLOUD_URL = `https://jsonblob.com/api/jsonBlob/${JSONBLOB_ID}`;
 
         let usuarioActual = null;
         let rolActual = null;
@@ -279,15 +280,16 @@
             return primeraPendiente;
         }
 
-        // Sincronización automática global en tiempo real
         async function sincronizarDesdeNube() {
             if (bloqueandoSincronizacion) return;
             try {
-                let response = await fetch(CLOUD_URL, { cache: "no-store" });
+                let response = await fetch(CLOUD_URL, { 
+                    method: "GET",
+                    headers: { "Accept": "application/json" }
+                });
                 if (response.ok) {
                     let cloudData = await response.json();
                     if (cloudData && cloudData["1596"]) {
-                        // Si el usuario actual está logueado, fusionar manteniendo sus fotos y estados recientes
                         if (usuarioActual && cloudData[usuarioActual.id]) {
                             let cloudUser = cloudData[usuarioActual.id];
                             if (usuarioActual.puntos && cloudUser.puntos) {
@@ -308,11 +310,10 @@
                     }
                 }
             } catch (e) {
-                console.warn("Sincronización en segundo plano con caché local.");
+                console.warn("Conectando con la nube...");
             }
         }
 
-        // Guardado global inmediato compartido en la nube
         async function guardarEnNube() {
             bloqueandoSincronizacion = true;
             try {
@@ -322,22 +323,28 @@
                 }
 
                 await fetch(CLOUD_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    method: "PUT",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
                     body: JSON.stringify(asesoresDB)
                 });
             } catch (e) {
-                console.warn("Error al guardar en nube compartida:", e);
+                console.warn("Error al guardar en la nube compartida:", e);
             } finally {
                 setTimeout(() => {
                     bloqueandoSincronizacion = false;
-                }, 2000);
+                }, 1500);
             }
         }
 
         async function inicializarConexionGlobal() {
             try {
-                let res = await fetch(CLOUD_URL, { cache: "no-store" });
+                let res = await fetch(CLOUD_URL, { 
+                    method: "GET",
+                    headers: { "Accept": "application/json" }
+                });
                 if (res.ok) {
                     let json = await res.json();
                     if (json && json["1596"]) {
@@ -346,7 +353,6 @@
                     }
                 }
             } catch(err) {}
-            // Si estuviera vacío, inicializar con la base base
             asesoresDB = baseInicial;
             await guardarEnNube();
         }
@@ -360,17 +366,17 @@
             let cuenta = asesoresDB[pass] || baseInicial[pass];
 
             if (!cuenta) {
-                alert("PIN o Contraseña incorrecta. Verifique sus datos.");
+                alert("PIN o Contraseña incorrecta.");
                 return;
             }
 
             if (rolSeleccionado === "admin" && cuenta.rol !== "admin") {
-                alert("⚠️ Esta clave no pertenece a un Administrador.");
+                alert("⚠️ Esta clave no corresponde al perfil Administrador.");
                 return;
             }
 
             if (rolSeleccionado === "asesor" && cuenta.rol !== "asesor") {
-                alert("⚠️ Esta clave pertenece al Administrador. Seleccione 'Administrador' en el menú.");
+                alert("⚠️ Seleccione el acceso de Administrador.");
                 return;
             }
 
@@ -394,15 +400,15 @@
             document.getElementById("input-coordenadas").value = "";
 
             if (rolActual === "admin") {
-                document.getElementById("header-title").innerText = "Panel Gerencial - Supervisión Total";
+                document.getElementById("header-title").innerText = "Panel Gerencial y Monitoreo General";
                 document.getElementById("user-badge").innerText = "Administrador (1596)";
                 document.getElementById("admin-controls-box").style.display = "block";
                 document.getElementById("admin-selector-box").style.display = "block";
                 document.getElementById("admin-lock-container").style.display = "block";
                 poblarSelectVistaAdmin();
             } else {
-                document.getElementById("header-title").innerText = `Ruta de Campo - ${usuarioActual.nombre}`;
-                document.getElementById("user-badge").innerText = `PIN: ${usuarioActual.id}`;
+                document.getElementById("header-title").innerText = `Ruta Activa - ${usuarioActual.nombre}`;
+                document.getElementById("user-badge").innerText = `Asesor PIN: ${usuarioActual.id}`;
                 document.getElementById("admin-selector-box").style.display = "none";
                 document.getElementById("admin-lock-container").style.display = "none";
                 
@@ -418,10 +424,9 @@
                 renderizarListaParadas();
             }, 200);
 
-            // Sincronización global cada 5 segundos
             intervaloCloudSync = setInterval(async () => {
                 await sincronizarDesdeNube();
-            }, 5000);
+            }, 4000);
         }
 
         function poblarSelectVistaAdmin() {
@@ -454,7 +459,7 @@
                     html: `<div style="background-color:#1e293b;color:white;padding:8px;border-radius:50%;text-align:center;"><i class="fa-solid fa-building-columns"></i></div>`,
                     iconSize: [36, 36], iconAnchor: [18, 18]
                 });
-                L.marker([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], { icon: agIcon }).addTo(map).bindPopup("<b>Agencia Central</b>");
+                L.marker([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], { icon: agIcon }).addTo(map).bindPopup("<b>Agencia Central Mano Amiga</b>");
             } else {
                 map.invalidateSize();
             }
@@ -526,11 +531,11 @@
             const pin = document.getElementById("nuevo-pin-asesor").value.trim();
 
             if (!nombre || !pin) {
-                alert("Ingrese el nombre y el PIN de 4 dígitos.");
+                alert("Ingrese el nombre y el PIN.");
                 return;
             }
             if (asesoresDB[pin]) {
-                alert("Este PIN ya está registrado.");
+                alert("Este PIN ya existe.");
                 return;
             }
 
@@ -543,27 +548,27 @@
             document.getElementById("nuevo-nombre-asesor").value = "";
             document.getElementById("nuevo-pin-asesor").value = "";
             poblarSelectVistaAdmin();
-            alert(`Asesor ${nombre} guardado en la nube compartida.`);
+            alert(`Asesor ${nombre} guardado.`);
         }
 
         async function optimizarYGuardarRuta() {
             let targetAsesor = usuarioActual;
             if (rolActual === "admin") {
                 if (vistaAdminSeleccionada === "todos") {
-                    alert("Seleccione un asesor específico en el menú superior para agregar coordenadas.");
+                    alert("Seleccione un asesor específico arriba para asignarle la ruta.");
                     return;
                 }
                 targetAsesor = asesoresDB[vistaAdminSeleccionada];
             }
 
             if (targetAsesor.cerrado) {
-                alert("⚠️ Las coordenadas de esta ruta están cerradas por el Administrador.");
+                alert("⚠️ Las coordenadas de esta ruta están cerradas.");
                 return;
             }
 
             const textoCoords = document.getElementById("input-coordenadas").value.trim();
             if (!textoCoords) {
-                alert("Ingrese al menos una coordenada.");
+                alert("Ingrese las coordenadas.");
                 return;
             }
 
@@ -618,7 +623,7 @@
             document.getElementById("input-coordenadas").value = "";
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("¡Ruta optimizada y sincronizada en tiempo real!");
+            alert("Ruta cargada y sincronizada globalmente.");
         }
 
         async function toggleCierreCoordenadas() {
@@ -742,7 +747,7 @@
 
         async function eliminarParadaAdmin(pinAsesor, index) {
             if (pinAsesor === "todos") {
-                alert("Seleccione un asesor en específico en el menú superior.");
+                alert("Seleccione un asesor en específico.");
                 return;
             }
             if (confirm("¿Eliminar esta parada?")) {
@@ -776,11 +781,11 @@
             if (!file) return;
 
             if (!navigator.geolocation) {
-                alert("Su navegador no soporta geolocalización.");
+                alert("Navegador sin soporte de GPS.");
                 return;
             }
 
-            alert("Obteniendo su ubicación GPS real en tiempo real para estampar en la foto...");
+            alert("Obteniendo GPS real para sellar fotografía...");
 
             navigator.geolocation.getCurrentPosition(
                 (position) => {
@@ -801,7 +806,7 @@
                             const ahora = new Date();
                             const fechaHora = ahora.toLocaleString('es-GT', { dateStyle: 'short', timeStyle: 'medium' });
                             
-                            const textoMarcaAgua = `Mano Amiga | ${fechaHora} | GPS Real: ${latReal.toFixed(5)}, ${lngReal.toFixed(5)}`;
+                            const textoMarcaAgua = `Mano Amiga | ${fechaHora} | GPS: ${latReal.toFixed(5)}, ${lngReal.toFixed(5)}`;
 
                             ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
                             ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
@@ -820,7 +825,7 @@
                     reader.readAsDataURL(file);
                 },
                 (error) => {
-                    alert("⚠️ No se pudo obtener la ubicación GPS real.");
+                    alert("⚠️ Active el permiso de ubicación.");
                 },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
@@ -829,11 +834,11 @@
         async function guardarVisitaExitosa() {
             const nota = document.getElementById("input-avance").value.trim();
             if (!nota) {
-                alert("Escriba la descripción del avance.");
+                alert("Escriba la nota de la visita.");
                 return;
             }
             if (!imagenBase64Procesada) {
-                alert("⚠️ Debe tomar o subir una fotografía con GPS real como evidencia obligatoria.");
+                alert("⚠️ Adjunte una fotografía obligatoria.");
                 return;
             }
 
@@ -850,12 +855,12 @@
             cerrarModalVisita();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("¡Visita guardada y sincronizada globalmente con éxito!");
+            alert("Visita guardada correctamente.");
         }
 
         async function marcarIncidenciaAusente() {
             if (!imagenBase64Procesada) {
-                alert("⚠️ Debe tomar o subir una fotografía con GPS real como evidencia.");
+                alert("⚠️ Adjunte una fotografía obligatoria.");
                 return;
             }
 
@@ -872,7 +877,7 @@
             cerrarModalVisita();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("Incidencia marcada y sincronizada globalmente.");
+            alert("Incidencia marcada correctamente.");
         }
 
         function abrirModalEvidencias() {
@@ -893,7 +898,7 @@
             });
 
             if (registrosConFoto.length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 text-sm"><i class="fa-solid fa-camera text-4xl mb-2"></i><p>Aún no hay visitas con fotografía registradas en la nube.</p></div>`;
+                grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 text-sm"><i class="fa-solid fa-camera text-4xl mb-2"></i><p>Aún no hay fotografías en la bitácora.</p></div>`;
             } else {
                 registrosConFoto.forEach(reg => {
                     let card = document.createElement("div");
@@ -908,10 +913,10 @@
                             <div>
                                 <span class="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded ${reg.estado==='completado'?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}">${reg.estado}</span>
                                 <h4 class="font-bold text-slate-900 text-sm mt-1">${reg.cliente}</h4>
-                                <p class="text-xs text-slate-700 mt-2 bg-white p-3 rounded-xl border border-slate-200"><strong>Descripción:</strong> ${reg.nota}</p>
+                                <p class="text-xs text-slate-700 mt-2 bg-white p-3 rounded-xl border border-slate-200"><strong>Detalle:</strong> ${reg.nota}</p>
                             </div>
                             <div class="pt-2 border-t border-slate-200 flex justify-between items-center text-xs text-slate-500 font-mono">
-                                <span>📍 Coordenada: ${reg.lat.toFixed(4)}, ${reg.lng.toFixed(4)}</span>
+                                <span>📍 Coordenadas: ${reg.lat.toFixed(4)}, ${reg.lng.toFixed(4)}</span>
                                 <a href="https://www.google.com/maps?q=${reg.lat},${reg.lng}" target="_blank" class="text-blue-600 font-bold hover:underline">Ver Mapa</a>
                             </div>
                         </div>
@@ -929,7 +934,7 @@
 
         function activarGPSReal() {
             if (!navigator.geolocation) {
-                alert("Su dispositivo no soporta geolocalización.");
+                alert("GPS no soportado en este dispositivo.");
                 return;
             }
 
@@ -957,7 +962,7 @@
                 (err) => { console.warn("GPS Error: " + err.message); },
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
-            alert("🚀 GPS en vivo activado. Transmitiendo ubicación a la nube global.");
+            alert("🚀 GPS activado: Transmitiendo ubicación en vivo.");
         }
 
         function exportarReporteExcel() {
@@ -975,7 +980,7 @@
             let url = URL.createObjectURL(blob);
             let a = document.createElement('a');
             a.setAttribute('href', url);
-            a.setAttribute('download', `Bitacora_Rutas_${new Date().toISOString().slice(0,10)}.csv`);
+            a.setAttribute('download', `Bitacora_ManoAmiga_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -983,3 +988,4 @@
     </script>
 </body>
 </html>
+```
