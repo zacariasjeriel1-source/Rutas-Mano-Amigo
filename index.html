@@ -36,12 +36,12 @@
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased">
 
-    <!-- PANTALLA DE LOGIN -->
+    <!-- PANTALLA DE LOGIN SEGURO (SIN CLAVES VISIBLES) -->
     <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-95 p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-100">
             <div class="text-center mb-8">
                 <div class="inline-flex items-center justify-center w-16 h-16 bg-emerald-600 text-white rounded-2xl shadow-lg mb-4 text-2xl">
-                    <i class="fa-solid fa-bolt"></i>
+                    <i class="fa-solid fa-shield-halved"></i>
                 </div>
                 <h1 class="text-2xl font-bold text-slate-900">Mano Amiga</h1>
                 <p class="text-sm text-slate-500 mt-1">Control y Rastreo en Tiempo Real</p>
@@ -52,7 +52,7 @@
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Rol de Acceso</label>
                     <select id="login-role" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50 font-medium text-sm">
                         <option value="asesor">Asesor de Campo (PIN)</option>
-                        <option value="admin">Administrador / Agencia (Clave)</option>
+                        <option value="admin">Administrador / Gestor (Clave)</option>
                     </select>
                 </div>
 
@@ -65,9 +65,7 @@
                     <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
                 </button>
             </div>
-            <div class="mt-4 text-center text-[11px] text-slate-400">
-                Gerencia: <b>1596</b> | Gestor: <b>4862</b> | Asesores: <b>1346</b> / <b>7946</b>
-            </div>
+            <!-- Se eliminaron los códigos de la pantalla principal por seguridad -->
         </div>
     </div>
 
@@ -716,7 +714,6 @@
             btn.innerHTML = `<i class="fa-solid fa-satellite-dish fa-bounce"></i> GPS Activo (Fondo)`;
             btn.className = "bg-blue-600 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow animate-pulse";
 
-            // Mantener pantalla y proceso despiertos mediante Wake Lock API
             try {
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
@@ -765,7 +762,6 @@
             }
         }
 
-        // Reconexión automática si el navegador suspende la pestaña
         document.addEventListener("visibilitychange", async function() {
             if (document.visibilityState === 'visible' && rolActual === "asesor") {
                 if (!watchId) activarGPSReal();
