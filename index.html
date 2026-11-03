@@ -82,8 +82,11 @@
             </div>
             <div class="flex items-center gap-3">
                 <span id="indicator-cloud" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs px-3 py-1.5 rounded-xl font-mono flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Sincronizado
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Sincronizado Nube
                 </span>
+                <button onclick="sincronizarDesdeSupabase()" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1">
+                    <i class="fa-solid fa-rotate"></i>
+                </button>
                 <button onclick="abrirModalEvidencias()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow">
                     <i class="fa-solid fa-images"></i> Bitácora
                 </button>
@@ -249,7 +252,7 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN DE SUPABASE (Integrada automáticamente con tus datos)
+        // CONFIGURACIÓN CONEXIÓN NUBE SUPABASE
         const SUPABASE_URL = "https://lcqztstpefwlwrmkerau.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_YOLr5vJUSRUE13Ud403_RA_xmuR9FJQ";
 
@@ -296,7 +299,7 @@
                 .from('sistema_flota')
                 .select('*')
                 .eq('id', 'config_global')
-                .single();
+                .maybeSingle();
 
             if (data && data.contenido) {
                 asesoresDB = data.contenido;
@@ -340,7 +343,8 @@
 
         iniciarEscuchaSupabaseRealtime();
 
-        function intentarLogin() {
+        async function intentarLogin() {
+            await sincronizarDesdeSupabase();
             const rolSeleccionado = document.getElementById("login-role").value;
             const pass = document.getElementById("login-pass").value.trim();
             
@@ -373,10 +377,12 @@
             document.getElementById("login-pass").value = "";
         }
 
-        function iniciarSistemaApp() {
+        async function iniciarSistemaApp() {
             document.getElementById("login-screen").classList.add("hidden");
             document.getElementById("app-container").classList.remove("hidden");
             document.getElementById("input-coordenadas").value = "";
+
+            await sincronizarDesdeSupabase();
 
             if (rolActual === "admin") {
                 document.getElementById("header-title").innerText = "Panel Gerencial Central";
@@ -638,7 +644,7 @@
 
             await guardarEnSupabase();
             document.getElementById("input-coordenadas").value = "";
-            alert(`¡Ruta asignada con éxito al Asesor (PIN: ${targetPin})!`);
+            alert(`¡Ruta guardada exitosamente en Supabase para el Asesor (PIN: ${targetPin})!`);
         }
 
         async function toggleCierreCoordenadas() {
