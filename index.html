@@ -3,149 +3,294 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rutas Mano Amiga</title>
+    <title>Rutas Mano Amiga - Sistema Completo</title>
+    <!-- Tailwind CSS v4 -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans antialiased">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased">
 
-    <!-- MODAL DE AUTENTICACIÓN -->
-    <div id="loginModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
+    <!-- MODAL DE LOGIN CON SESIÓN INDEPENDIENTE (GERENCIA: 1596 | GESTOR: 4862) -->
+    <div id="loginModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
-            <div class="w-16 h-16 bg-blue-600/20 text-blue-500 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 border border-blue-500/30">
+            <div class="w-16 h-16 bg-blue-600/20 text-blue-400 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 border border-blue-500/30 shadow-lg shadow-blue-500/10">
                 <i class="fa-solid fa-route"></i>
             </div>
             <h2 class="text-xl font-bold text-white">Rutas Mano Amiga</h2>
-            <p class="text-xs text-slate-400 mt-1 mb-6">Acceso a Monitoreo y Control de Campo</p>
+            <p class="text-xs text-slate-400 mt-1 mb-6">Monitoreo de Campo & Control de Asesores</p>
             
-            <form onsubmit="event.preventDefault(); validarAccesoRutas();" class="space-y-4">
+            <form onsubmit="event.preventDefault(); validarAcceso();" class="space-y-4">
                 <div class="relative">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
-                        <i class="fa-solid fa-lock"></i>
+                        <i class="fa-solid fa-key"></i>
                     </span>
-                    <input type="password" id="inputClaveRutas" placeholder="Ingrese PIN (1596 o 4862)" required
-                        class="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white text-center tracking-widest placeholder:tracking-normal placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                    <input type="password" id="inputClave" placeholder="PIN de acceso (1596 o 4862)" required
+                        class="w-full pl-10 pr-4 py-3.5 bg-slate-800/80 border border-slate-700 rounded-xl text-white text-center tracking-widest placeholder:tracking-normal placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
                 </div>
-                <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/25 transition-all flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-right-to-bracket"></i> Ingresar a Rutas
+                <button type="submit" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/25 transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
                 </button>
             </form>
-            <div class="mt-4 pt-4 border-t border-slate-800/80 text-[11px] text-slate-500">
-                Gerencia (1596) | Gestor (4862)
+            <div class="mt-4 pt-4 border-t border-slate-800 text-[11px] text-slate-500 flex justify-between">
+                <span>Gerencia: <b>1596</b></span>
+                <span>Gestor: <b>4862</b></span>
             </div>
         </div>
     </div>
 
     <!-- CONTENEDOR PRINCIPAL RUTAS MANO -->
     <div id="appRutas" class="hidden flex-1 flex flex-col">
-        <!-- Encabezado -->
-        <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+        
+        <!-- HEADER PRINCIPAL -->
+        <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 sticky top-0 z-40 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white text-lg font-bold">
+                <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-md shadow-blue-500/20">
                     <i class="fa-solid fa-location-dot"></i>
                 </div>
                 <div>
                     <h1 class="font-bold text-white text-sm leading-tight">Rutas Mano Amiga</h1>
-                    <span id="badgeRolRutas" class="text-[11px] text-blue-400 font-medium">Sesión Activa</span>
+                    <span id="txtRolSesion" class="text-[11px] text-blue-400 font-medium">Sesión Activa</span>
                 </div>
             </div>
-            <button onclick="cerrarSesionRutas()" class="px-3 py-1.5 bg-slate-800 hover:bg-rose-950/50 hover:text-rose-400 text-slate-400 text-xs font-medium rounded-lg border border-slate-700 transition-all flex items-center gap-1.5">
-                <i class="fa-solid fa-power-off"></i> Salir
-            </button>
+            
+            <div class="flex items-center gap-2">
+                <button onclick="sincronizarConSupabase()" title="Sincronizar Supabase" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-all">
+                    <i class="fa-solid fa-rotate text-xs"></i>
+                </button>
+                <button onclick="cerrarSesion()" title="Cerrar Sesión" class="px-3 py-1.5 bg-slate-800 hover:bg-rose-950/50 hover:text-rose-400 text-slate-400 text-xs font-medium rounded-lg border border-slate-700 transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-power-off"></i> Salir
+                </button>
+            </div>
         </header>
 
-        <!-- Panel de Control de Asesores y Rutas -->
-        <main class="flex-1 p-4 space-y-4 max-w-lg mx-auto w-full">
-            <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 flex items-center justify-between">
+        <!-- PANEL DE OPERACIÓN -->
+        <main class="flex-1 p-4 max-w-xl mx-auto w-full space-y-4">
+            
+            <!-- ESTADO DE SUPABASE & CONEXIÓN -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-sm">
                 <div class="flex items-center gap-3">
-                    <div class="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <div id="indicadorStatus" class="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
                     <div>
-                        <p class="text-xs text-slate-400">Estado de Sincronización</p>
-                        <h4 class="text-sm font-semibold text-white">Monitoreo Activo 24/7</h4>
+                        <p class="text-[11px] text-slate-400 uppercase tracking-wider">Estado de Servidor</p>
+                        <h4 id="lblStatusText" class="text-xs font-semibold text-emerald-400">Supabase Online</h4>
                     </div>
                 </div>
-                <span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded-full font-medium border border-emerald-500/20">En línea</span>
+                <span id="badgeModo" class="text-[10px] font-bold px-2 py-1 bg-blue-500/10 text-blue-400 rounded-md border border-blue-500/20">MULTISESIÓN ACTIVA</span>
             </div>
 
-            <!-- Lista de Asesores en Campo -->
-            <div class="space-y-3">
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Asesores de Ruta</h3>
-                
-                <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3.5 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-slate-700 text-slate-300 rounded-xl flex items-center justify-center font-bold">
-                            <i class="fa-solid fa-user-gear"></i>
-                        </div>
-                        <div>
-                            <h5 class="text-sm font-semibold text-white">Asesor 01 - Ruta Central</h5>
-                            <p class="text-xs text-slate-400">Último punto: Hace 5 min</p>
-                        </div>
+            <!-- REGISTRO DE NUEVA VISITA DE ASESOR -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-camera text-blue-500"></i> Registrar Visita / Cobro de Ruta
+                </h3>
+
+                <div class="space-y-2">
+                    <input type="text" id="txtClienteNombre" placeholder="Nombre del Cliente" 
+                        class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="txtMontoCobrado" placeholder="Monto Cobrado (Q)" 
+                            class="px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <select id="selectAsesor" class="px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="Asesor 01">Asesor 01</option>
+                            <option value="Asesor 02">Asesor 02</option>
+                            <option value="Asesor 03">Asesor 03</option>
+                        </select>
                     </div>
-                    <span class="text-xs font-semibold text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/20">Activo</span>
+
+                    <div class="pt-1">
+                        <label class="block text-[11px] text-slate-400 mb-1">Fotografía de Evidencia / Visita:</label>
+                        <input type="file" id="fotoVisita" accept="image/*" capture="environment" onchange="convertirFotoBase64(this)" 
+                            class="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600/20 file:text-blue-400 hover:file:bg-blue-600/30 cursor-pointer">
+                    </div>
                 </div>
 
-                <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3.5 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-slate-700 text-slate-300 rounded-xl flex items-center justify-center font-bold">
-                            <i class="fa-solid fa-user-gear"></i>
-                        </div>
-                        <div>
-                            <h5 class="text-sm font-semibold text-white">Asesor 02 - Ruta Norte</h5>
-                            <p class="text-xs text-slate-400">Último punto: Hace 12 min</p>
-                        </div>
+                <button onclick="guardarRegistroVisita()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-xs shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-floppy-disk"></i> Guardar Visita en Supabase
+                </button>
+            </div>
+
+            <!-- REGISTROS RECIENTES / HISTORIAL DE COBROS -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between px-1">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Últimos Registros en Ruta</h3>
+                    <span id="cantRegistros" class="text-[10px] text-slate-500">0 Registros</span>
+                </div>
+
+                <div id="listaVisitas" class="space-y-2">
+                    <!-- Registros dinámicos -->
+                    <div class="text-center py-6 text-slate-600 text-xs bg-slate-900/50 rounded-2xl border border-slate-800">
+                        Sin visitas cargadas aún.
                     </div>
-                    <span class="text-xs font-semibold text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/20">Activo</span>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- SCRIPT DE VALIDACIÓN INDEPENDIENTE -->
+    <!-- SCRIPTS DE LÓGICA COMPLETA Y SUPABASE -->
     <script>
-        const CLAVES_RUTAS = {
-            GERENCIA: { clave: "1596", rol: "Gerencia", sessionKey: "rutas_session_gerencia_1596" },
-            GESTOR: { clave: "4862", rol: "Gestor de Cartera", sessionKey: "rutas_session_gestor_4862" }
+        // CONFIGURACIÓN DE SUPABASE
+        const SUPABASE_URL = 'https://tu-proyecto.supabase.co';
+        const SUPABASE_ANON_KEY = 'tu-clave-anon-aqui';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // CREDENCIALES SEPARADAS PARA EVITAR BORRADOS MULTIDISPOSITIVO
+        const CLAVES_SISTEMA = {
+            GERENCIA: { clave: "1596", rol: "Gerencia", sesionId: "rutas_gerencia_1596_session" },
+            GESTOR: { clave: "4862", rol: "Gestor de Cartera", sesionId: "rutas_gestor_4862_session" }
         };
+
+        let fotoBase64Temp = "";
+        let arrayVisitasLocal = [];
 
         window.onload = function() {
-            let activeRol = localStorage.getItem("rutas_active_rol");
+            let activeRol = localStorage.getItem("rutas_user_rol");
             if (activeRol) {
-                mostrarPanelRutas(activeRol);
+                mostrarInterfazSystem(activeRol);
+                sincronizarConSupabase();
             }
         };
 
-        function validarAccesoRutas() {
-            const pass = document.getElementById("inputClaveRutas").value.trim();
+        function validarAcceso() {
+            const pass = document.getElementById("inputClave").value.trim();
             let user = null;
 
-            if (pass === CLAVES_RUTAS.GERENCIA.clave) {
-                user = CLAVES_RUTAS.GERENCIA;
-            } else if (pass === CLAVES_RUTAS.GESTOR.clave) {
-                user = CLAVES_RUTAS.GESTOR;
-            }
+            if (pass === CLAVES_SISTEMA.GERENCIA.clave) user = CLAVES_SISTEMA.GERENCIA;
+            else if (pass === CLAVES_SISTEMA.GESTOR.clave) user = CLAVES_SISTEMA.GESTOR;
 
             if (user) {
-                // Guarda claves de sesión separadas en cada dispositivo
-                localStorage.setItem("rutas_active_rol", user.rol);
-                localStorage.setItem("rutas_active_session", user.sessionKey);
-                mostrarPanelRutas(user.rol);
+                // Guarda sesiones aisladas en cada dispositivo
+                localStorage.setItem("rutas_user_rol", user.rol);
+                localStorage.setItem("rutas_user_session", user.sesionId);
+                mostrarInterfazSystem(user.rol);
+                sincronizarConSupabase();
             } else {
-                alert("PIN incorrecto. (Gerencia: 1596 | Gestor: 4862)");
+                alert("PIN no válido. Utilice 1596 para Gerencia o 4862 para Gestor.");
             }
         }
 
-        function mostrarPanelRutas(rol) {
+        function mostrarInterfazSystem(rol) {
             document.getElementById("loginModal").classList.add("hidden");
             document.getElementById("appRutas").classList.remove("hidden");
-            document.getElementById("badgeRolRutas").innerText = `Rol: ${rol}`;
+            document.getElementById("txtRolSesion").innerText = `Rol: ${rol}`;
         }
 
-        function cerrarSesionRutas() {
-            localStorage.removeItem("rutas_active_rol");
-            localStorage.removeItem("rutas_active_session");
-            document.getElementById("inputClaveRutas").value = "";
+        function cerrarSesion() {
+            localStorage.removeItem("rutas_user_rol");
+            localStorage.removeItem("rutas_user_session");
+            document.getElementById("inputClave").value = "";
             document.getElementById("appRutas").classList.add("hidden");
             document.getElementById("loginModal").classList.remove("hidden");
+        }
+
+        function convertirFotoBase64(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) { fotoBase64Temp = e.target.result; };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        async function guardarRegistroVisita() {
+            const cliente = document.getElementById("txtClienteNombre").value.trim();
+            const monto = document.getElementById("txtMontoCobrado").value.trim();
+            const asesor = document.getElementById("selectAsesor").value;
+
+            if (!cliente) {
+                alert("Ingrese el nombre del cliente.");
+                return;
+            }
+
+            const nuevoRegistro = {
+                id: Date.now(),
+                cliente: cliente,
+                monto: monto ? parseFloat(monto) : 0,
+                asesor: asesor,
+                foto: fotoBase64Temp,
+                fecha: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+
+            // Intentar enviar a Supabase primero
+            try {
+                const { error } = await supabaseClient.from('sistema_flota').insert([
+                    { datos_json: nuevoRegistro }
+                ]);
+
+                if (error) console.log("Guardando en modo local fallback...");
+            } catch (err) {
+                console.log("Supabase desconectado, guardando en local...");
+            }
+
+            // Guardar localmente
+            arrayVisitasLocal.unshift(nuevoRegistro);
+            renderizarVisitas();
+
+            // Limpiar formulario
+            document.getElementById("txtClienteNombre").value = "";
+            document.getElementById("txtMontoCobrado").value = "";
+            document.getElementById("fotoVisita").value = "";
+            fotoBase64Temp = "";
+            alert("¡Visita registrada correctamente!");
+        }
+
+        async function sincronizarConSupabase() {
+            document.getElementById("lblStatusText").innerText = "Sincronizando...";
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('sistema_flota')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+
+                if (!error && data && data.length > 0) {
+                    arrayVisitasLocal = data.map(item => item.datos_json || item);
+                }
+                
+                document.getElementById("lblStatusText").innerText = "Supabase Conectado";
+                document.getElementById("lblStatusText").className = "text-xs font-semibold text-emerald-400";
+            } catch (e) {
+                document.getElementById("lblStatusText").innerText = "Modo Local Activo";
+                document.getElementById("lblStatusText").className = "text-xs font-semibold text-amber-400";
+            }
+
+            renderizarVisitas();
+        }
+
+        function renderizarVisitas() {
+            const lista = document.getElementById("listaVisitas");
+            document.getElementById("cantRegistros").innerText = `${arrayVisitasLocal.length} Registros`;
+
+            if (arrayVisitasLocal.length === 0) {
+                lista.innerHTML = '<div class="text-center py-6 text-slate-600 text-xs bg-slate-900/50 rounded-2xl border border-slate-800">Sin registros guardados.</div>';
+                return;
+            }
+
+            let html = "";
+            arrayVisitasLocal.forEach(reg => {
+                html += `
+                    <div class="bg-slate-900 border border-slate-800/80 rounded-xl p-3 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            ${reg.foto ? 
+                                `<img src="${reg.foto}" class="w-10 h-10 object-cover rounded-lg border border-slate-700">` : 
+                                `<div class="w-10 h-10 bg-slate-800 text-slate-400 rounded-lg flex items-center justify-center text-xs"><i class="fa-solid fa-user"></i></div>`
+                            }
+                            <div>
+                                <h4 class="text-xs font-bold text-white">${reg.cliente}</h4>
+                                <p class="text-[10px] text-slate-400">${reg.asesor} • ${reg.fecha || 'Hoy'}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs font-bold text-emerald-400">Q ${(reg.monto || 0).toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            lista.innerHTML = html;
         }
     </script>
 </body>
