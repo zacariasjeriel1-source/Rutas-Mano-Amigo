@@ -118,7 +118,7 @@
                         <span class="text-[11px] font-bold text-slate-700 block">Registrar Nuevo Asesor</span>
                         <div class="grid grid-cols-2 gap-2">
                             <input type="text" id="nuevo-nombre-asesor" placeholder="Nombre Asesor" class="text-xs p-2 rounded-lg border border-slate-300">
-                            <input type="password" id="nuevo-pin-asesor" placeholder="PIN (ej. 4862)" maxlength="6" class="text-xs p-2 rounded-lg border border-slate-300">
+                            <input type="password" id="nuevo-pin-asesor" placeholder="PIN (ej. 4863)" maxlength="6" class="text-xs p-2 rounded-lg border border-slate-300">
                         </div>
                         <button onclick="registrarNuevoAsesorAdmin()" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 rounded-lg transition">
                             <i class="fa-solid fa-user-plus"></i> Guardar Asesor
@@ -271,6 +271,7 @@
         let capasTrayectorias = {};
         let polylinesAsesores = [];
         let watchId = null;
+        let wakeLock = null;
         let paradasVisitandoIndex = null;
         let fotoDataUrlActual = "";
 
@@ -309,7 +310,6 @@
 
             if (data && data.contenido) {
                 asesoresDB = data.contenido;
-                // Asegurar que exista el gestor 4862 si el registro en nube era viejo
                 if (!asesoresDB["4862"]) {
                     asesoresDB["4862"] = { id: "4862", nombre: "Gestor de Cartera", rol: "admin", color: "#0f172a", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] };
                 }
@@ -382,6 +382,7 @@
 
         function cerrarSesion() {
             if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (wakeLock) wakeLock.release().catch(() => {});
             document.getElementById("app-container").classList.add("hidden");
             document.getElementById("login-screen").classList.remove("hidden");
             document.getElementById("login-pass").value = "";
@@ -653,7 +654,6 @@
                 if (vistaAdminSeleccionada !== "todos" && asesoresDB[vistaAdminSeleccionada]) {
                     target = asesoresDB[vistaAdminSeleccionada];
                 } else {
-                    // Vista general admin
                     let htmlGral = `<div class="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-2">
                         <h4 class="font-bold text-xs text-slate-700">Resumen General de Asesores</h4>`;
                     Object.keys(asesoresDB).forEach(pin => {
@@ -710,13 +710,22 @@
             contenedor.innerHTML = html;
         }
 
-        function activarGPSReal() {
+        async function activarGPSReal() {
             if (rolActual !== "asesor") return;
             const btn = document.getElementById("btn-gps-toggle");
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Transmitiendo...`;
-            btn.className = "bg-blue-600 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow";
+            btn.innerHTML = `<i class="fa-solid fa-satellite-dish fa-bounce"></i> GPS Activo (Fondo)`;
+            btn.className = "bg-blue-600 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow animate-pulse";
+
+            // Mantener pantalla y proceso despiertos mediante Wake Lock API
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {}
 
             if ("geolocation" in navigator) {
+                const opcionesGPS = { enableHighAccuracy: true, maximumAge: 0, timeout: 27000 };
+
                 watchId = navigator.geolocation.watchPosition(position => {
                     let lat = position.coords.latitude;
                     let lng = position.coords.longitude;
@@ -729,9 +738,11 @@
                     usuarioActual.ultimaHoraGps = new Date().toLocaleTimeString();
 
                     if (!usuarioActual.historial) usuarioActual.historial = [];
-                    usuarioActual.historial.push([lat, lng]);
+                    let ultimoPunto = usuarioActual.historial[usuarioActual.historial.length - 1];
+                    if (!ultimoPunto || ultimoPunto[0] !== lat || ultimoPunto[1] !== lng) {
+                        usuarioActual.historial.push([lat, lng]);
+                    }
 
-                    // Calcular distancia al próximo punto pendiente
                     if (usuarioActual.puntos && usuarioActual.puntos.length > 0) {
                         let idxActivo = recalcularParadaActiva(usuarioActual);
                         if (idxActivo < usuarioActual.puntos.length) {
@@ -749,12 +760,22 @@
                     actualizarPanelTelemetria();
 
                 }, error => {
-                    console.error("Error GPS:", error);
-                }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
-            } else {
-                alert("Geolocalización no soportada en este navegador.");
+                    console.warn("Reintentando señal GPS...", error);
+                }, opcionesGPS);
             }
         }
+
+        // Reconexión automática si el navegador suspende la pestaña
+        document.addEventListener("visibilitychange", async function() {
+            if (document.visibilityState === 'visible' && rolActual === "asesor") {
+                if (!watchId) activarGPSReal();
+                try {
+                    if ('wakeLock' in navigator && (!wakeLock || wakeLock.released)) {
+                        wakeLock = await navigator.wakeLock.request('screen');
+                    }
+                } catch (err) {}
+            }
+        });
 
         function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
             let R = 6371000;
@@ -795,7 +816,6 @@
                     canvas.height = img.height;
                     ctx.drawImage(img, 0, 0);
 
-                    // Sellar GPS timestamp en la foto
                     ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
                     ctx.fillRect(10, canvas.height - 60, canvas.width - 20, 45);
                     ctx.fillStyle = "#ffffff";
