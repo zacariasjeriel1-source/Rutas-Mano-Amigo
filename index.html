@@ -36,7 +36,7 @@
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased">
 
-    <!-- PANTALLA DE LOGIN SEGURO (SIN CLAVES VISIBLES) -->
+    <!-- PANTALLA DE LOGIN -->
     <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-95 p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-100">
             <div class="text-center mb-8">
@@ -65,7 +65,6 @@
                     <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
                 </button>
             </div>
-            <!-- Se eliminaron los códigos de la pantalla principal por seguridad -->
         </div>
     </div>
 
@@ -270,6 +269,7 @@
         let polylinesAsesores = [];
         let watchId = null;
         let wakeLock = null;
+        let audioInvisbleInterval = null;
         let paradasVisitandoIndex = null;
         let fotoDataUrlActual = "";
 
@@ -381,6 +381,7 @@
         function cerrarSesion() {
             if (watchId) navigator.geolocation.clearWatch(watchId);
             if (wakeLock) wakeLock.release().catch(() => {});
+            if (audioInvisbleInterval) clearInterval(audioInvisbleInterval);
             document.getElementById("app-container").classList.add("hidden");
             document.getElementById("login-screen").classList.remove("hidden");
             document.getElementById("login-pass").value = "";
@@ -714,11 +715,28 @@
             btn.innerHTML = `<i class="fa-solid fa-satellite-dish fa-bounce"></i> GPS Activo (Fondo)`;
             btn.className = "bg-blue-600 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow animate-pulse";
 
+            // 1. Evitar suspensión de pantalla
             try {
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
                 }
             } catch (err) {}
+
+            // 2. Truco de Audio Silencioso para evitar que el celular con pantalla bloqueada suspenda el GPS
+            try {
+                let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioInvisbleInterval) clearInterval(audioInvisbleInterval);
+                audioInvisbleInterval = setInterval(() => {
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                    let oscillator = audioCtx.createOscillator();
+                    let gainNode = audioCtx.createGain();
+                    gainNode.gain.value = 0.001; // Casi imperceptible pero mantiene vivo el proceso de audio del sistema
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    oscillator.start();
+                    oscillator.stop(audioCtx.currentTime + 0.1);
+                }, 15000);
+            } catch (e) {}
 
             if ("geolocation" in navigator) {
                 const opcionesGPS = { enableHighAccuracy: true, maximumAge: 0, timeout: 27000 };
