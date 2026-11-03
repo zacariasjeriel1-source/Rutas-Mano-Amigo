@@ -3,294 +3,893 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rutas Mano Amiga - Sistema Completo</title>
-    <!-- Tailwind CSS v4 -->
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- FontAwesome icons -->
+    <title>Sistema de Rastreo - Mano Amiga</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased">
 
-    <!-- MODAL DE LOGIN CON SESIÓN INDEPENDIENTE (GERENCIA: 1596 | GESTOR: 4862) -->
-    <div id="loginModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
-            <div class="w-16 h-16 bg-blue-600/20 text-blue-400 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 border border-blue-500/30 shadow-lg shadow-blue-500/10">
-                <i class="fa-solid fa-route"></i>
-            </div>
-            <h2 class="text-xl font-bold text-white">Rutas Mano Amiga</h2>
-            <p class="text-xs text-slate-400 mt-1 mb-6">Monitoreo de Campo & Control de Asesores</p>
-            
-            <form onsubmit="event.preventDefault(); validarAcceso();" class="space-y-4">
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
-                        <i class="fa-solid fa-key"></i>
-                    </span>
-                    <input type="password" id="inputClave" placeholder="PIN de acceso (1596 o 4862)" required
-                        class="w-full pl-10 pr-4 py-3.5 bg-slate-800/80 border border-slate-700 rounded-xl text-white text-center tracking-widest placeholder:tracking-normal placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+    <style>
+        @media print {
+            body * { visibility: hidden; }
+            #modal-evidencias, #modal-evidencias * { visibility: visible; }
+            #modal-evidencias { position: absolute; left: 0; top: 0; width: 100%; background: white !important; }
+            .no-print { display: none !important; }
+        }
+        .pulse-marker-active {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse-green 1.5s infinite;
+        }
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 14px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 antialiased">
+
+    <!-- PANTALLA DE LOGIN -->
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-95 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-100">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-emerald-600 text-white rounded-2xl shadow-lg mb-4 text-2xl">
+                    <i class="fa-solid fa-bolt"></i>
                 </div>
-                <button type="submit" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/25 transition-all flex items-center justify-center gap-2">
+                <h1 class="text-2xl font-bold text-slate-900">Mano Amiga</h1>
+                <p class="text-sm text-slate-500 mt-1">Control y Rastreo en Tiempo Real</p>
+            </div>
+
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Rol de Acceso</label>
+                    <select id="login-role" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50 font-medium text-sm">
+                        <option value="asesor">Asesor de Campo (PIN)</option>
+                        <option value="admin">Administrador / Agencia (Clave)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">PIN / Clave de Acceso</label>
+                    <input type="password" id="login-pass" maxlength="6" placeholder="••••" class="w-full text-center text-2xl tracking-widest px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50 font-bold">
+                </div>
+
+                <button onclick="intentarLogin()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-emerald-500/30 transition flex items-center justify-center gap-2 text-sm">
                     <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
                 </button>
-            </form>
-            <div class="mt-4 pt-4 border-t border-slate-800 text-[11px] text-slate-500 flex justify-between">
-                <span>Gerencia: <b>1596</b></span>
-                <span>Gestor: <b>4862</b></span>
+            </div>
+            <div class="mt-4 text-center text-[11px] text-slate-400">
+                Gerencia: <b>1596</b> | Gestor: <b>4862</b> | Asesores: <b>1346</b> / <b>7946</b>
             </div>
         </div>
     </div>
 
-    <!-- CONTENEDOR PRINCIPAL RUTAS MANO -->
-    <div id="appRutas" class="hidden flex-1 flex flex-col">
-        
-        <!-- HEADER PRINCIPAL -->
-        <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 sticky top-0 z-40 flex items-center justify-between">
+    <!-- APLICACIÓN PRINCIPAL -->
+    <div id="app-container" class="min-h-screen flex flex-col hidden">
+        <header class="bg-slate-900 text-white shadow-md z-30 px-6 py-4 flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-md shadow-blue-500/20">
-                    <i class="fa-solid fa-location-dot"></i>
+                <div class="bg-emerald-600 p-2.5 rounded-xl shadow">
+                    <i class="fa-solid fa-satellite-dish text-xl animate-pulse"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-white text-sm leading-tight">Rutas Mano Amiga</h1>
-                    <span id="txtRolSesion" class="text-[11px] text-blue-400 font-medium">Sesión Activa</span>
+                    <h2 class="font-bold text-lg leading-tight" id="header-title">Control de Flota</h2>
+                    <p class="text-xs text-slate-400">Agencia Central | En Vivo</p>
                 </div>
             </div>
-            
-            <div class="flex items-center gap-2">
-                <button onclick="sincronizarConSupabase()" title="Sincronizar Supabase" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-all">
-                    <i class="fa-solid fa-rotate text-xs"></i>
+            <div class="flex items-center gap-3">
+                <span id="indicator-cloud" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs px-3 py-1.5 rounded-xl font-mono flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Sincronizado Nube
+                </span>
+                <button onclick="sincronizarDesdeSupabase()" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1">
+                    <i class="fa-solid fa-rotate"></i>
                 </button>
-                <button onclick="cerrarSesion()" title="Cerrar Sesión" class="px-3 py-1.5 bg-slate-800 hover:bg-rose-950/50 hover:text-rose-400 text-slate-400 text-xs font-medium rounded-lg border border-slate-700 transition-all flex items-center gap-1.5">
-                    <i class="fa-solid fa-power-off"></i> Salir
+                <button onclick="abrirModalEvidencias()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow">
+                    <i class="fa-solid fa-images"></i> Bitácora
+                </button>
+                <span id="user-badge" class="bg-slate-800 text-emerald-400 text-xs px-3 py-2 rounded-xl border border-slate-700 font-medium"></span>
+                <button onclick="cerrarSesion()" class="bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-xs transition border border-slate-700">
+                    <i class="fa-solid fa-power-off"></i>
                 </button>
             </div>
         </header>
 
-        <!-- PANEL DE OPERACIÓN -->
-        <main class="flex-1 p-4 max-w-xl mx-auto w-full space-y-4">
-            
-            <!-- ESTADO DE SUPABASE & CONEXIÓN -->
-            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-sm">
-                <div class="flex items-center gap-3">
-                    <div id="indicadorStatus" class="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+        <div class="flex-1 flex flex-col lg:flex-row">
+            <!-- Panel Lateral -->
+            <aside class="w-full lg:w-[440px] bg-white border-r border-slate-200 flex flex-col z-20 shadow-lg">
+                <div id="admin-selector-box" class="p-4 bg-slate-50 border-b border-slate-200 hidden space-y-3">
+                    <h3 class="font-bold text-xs uppercase text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-users-gear text-emerald-600"></i> Administración de Flota
+                    </h3>
                     <div>
-                        <p class="text-[11px] text-slate-400 uppercase tracking-wider">Estado de Servidor</p>
-                        <h4 id="lblStatusText" class="text-xs font-semibold text-emerald-400">Supabase Online</h4>
-                    </div>
-                </div>
-                <span id="badgeModo" class="text-[10px] font-bold px-2 py-1 bg-blue-500/10 text-blue-400 rounded-md border border-blue-500/20">MULTISESIÓN ACTIVA</span>
-            </div>
-
-            <!-- REGISTRO DE NUEVA VISITA DE ASESOR -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-                <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                    <i class="fa-solid fa-camera text-blue-500"></i> Registrar Visita / Cobro de Ruta
-                </h3>
-
-                <div class="space-y-2">
-                    <input type="text" id="txtClienteNombre" placeholder="Nombre del Cliente" 
-                        class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="number" id="txtMontoCobrado" placeholder="Monto Cobrado (Q)" 
-                            class="px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        <select id="selectAsesor" class="px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                            <option value="Asesor 01">Asesor 01</option>
-                            <option value="Asesor 02">Asesor 02</option>
-                            <option value="Asesor 03">Asesor 03</option>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Monitorear Asesor:</label>
+                        <select id="select-vista-asesor" onchange="cambiarVistaAdmin()" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white font-medium">
+                            <option value="todos">🌍 Ver Todos los Asesores en Simultáneo</option>
                         </select>
                     </div>
 
-                    <div class="pt-1">
-                        <label class="block text-[11px] text-slate-400 mb-1">Fotografía de Evidencia / Visita:</label>
-                        <input type="file" id="fotoVisita" accept="image/*" capture="environment" onchange="convertirFotoBase64(this)" 
-                            class="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600/20 file:text-blue-400 hover:file:bg-blue-600/30 cursor-pointer">
+                    <div class="pt-2 border-t border-slate-200 space-y-2">
+                        <span class="text-[11px] font-bold text-slate-700 block">Registrar Nuevo Asesor</span>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="text" id="nuevo-nombre-asesor" placeholder="Nombre Asesor" class="text-xs p-2 rounded-lg border border-slate-300">
+                            <input type="password" id="nuevo-pin-asesor" placeholder="PIN (ej. 4862)" maxlength="6" class="text-xs p-2 rounded-lg border border-slate-300">
+                        </div>
+                        <button onclick="registrarNuevoAsesorAdmin()" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 rounded-lg transition">
+                            <i class="fa-solid fa-user-plus"></i> Guardar Asesor
+                        </button>
                     </div>
                 </div>
 
-                <button onclick="guardarRegistroVisita()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-xs shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-floppy-disk"></i> Guardar Visita en Supabase
-                </button>
-            </div>
+                <div class="p-5 border-b border-slate-100 space-y-4" id="admin-controls-box">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-route text-emerald-600"></i> Asignar Coordenadas
+                        </h3>
+                        <span id="lock-status-badge" class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">Abierto</span>
+                    </div>
 
-            <!-- REGISTROS RECIENTES / HISTORIAL DE COBROS -->
-            <div class="space-y-2">
-                <div class="flex items-center justify-between px-1">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Últimos Registros en Ruta</h3>
-                    <span id="cantRegistros" class="text-[10px] text-slate-500">0 Registros</span>
-                </div>
+                    <div>
+                        <textarea id="input-coordenadas" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none font-mono bg-slate-50" placeholder="15.0350, -91.1500&#10;15.0400, -91.1600"></textarea>
+                    </div>
 
-                <div id="listaVisitas" class="space-y-2">
-                    <!-- Registros dinámicos -->
-                    <div class="text-center py-6 text-slate-600 text-xs bg-slate-900/50 rounded-2xl border border-slate-800">
-                        Sin visitas cargadas aún.
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="optimizarYGuardarRuta()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md">
+                            <i class="fa-solid fa-plus-circle"></i> Asignar Ruta
+                        </button>
+                        <button onclick="exportarReporteExcel()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md">
+                            <i class="fa-solid fa-file-excel"></i> Exportar CSV
+                        </button>
+                    </div>
+
+                    <div id="admin-lock-container" class="hidden pt-2 border-t border-slate-100">
+                        <button id="btn-toggle-lock" onclick="toggleCierreCoordenadas()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow">
+                            <i class="fa-solid fa-lock"></i> Bloquear Edición
+                        </button>
                     </div>
                 </div>
-            </div>
-        </main>
+
+                <!-- Telemetría Dinámica GPS -->
+                <div id="info-posicion-envivo" class="px-5 py-3 bg-slate-900 text-white text-xs space-y-1">
+                    <div class="flex justify-between items-center font-bold">
+                        <span class="text-slate-300"><i class="fa-solid fa-satellite text-emerald-400"></i> Telemetría:</span>
+                        <span id="txt-ultima-act" class="text-emerald-400 font-mono">En vivo</span>
+                    </div>
+                    <div class="font-mono text-[11px] text-slate-400" id="txt-coords-envivo">Esperando reporte GPS...</div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50" id="lista-paradas"></div>
+            </aside>
+
+            <!-- Mapa Principal Leaflet -->
+            <main class="flex-1 relative flex flex-col">
+                <div class="absolute top-4 right-4 z-[400] bg-slate-900/90 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-6">
+                    <div class="text-center">
+                        <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-bold">Velocidad</span>
+                        <span id="waze-speed" class="text-2xl font-black text-emerald-400">0.0</span>
+                        <span class="text-xs text-slate-300">km/h</span>
+                    </div>
+                    <div class="h-8 w-px bg-slate-700"></div>
+                    <div class="text-center">
+                        <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-bold">Próximo Destino</span>
+                        <span id="waze-distance" class="text-xl font-bold text-emerald-400">0</span>
+                        <span class="text-xs text-slate-300">m</span>
+                    </div>
+                    <div class="h-8 w-px bg-slate-700"></div>
+                    <button id="btn-gps-toggle" onclick="activarGPSReal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
+                        <i class="fa-solid fa-location-crosshairs"></i> Activar Transmisión GPS
+                    </button>
+                </div>
+
+                <div id="map" class="flex-1 w-full h-[500px] lg:h-full z-10"></div>
+            </main>
+        </div>
     </div>
 
-    <!-- SCRIPTS DE LÓGICA COMPLETA Y SUPABASE -->
+    <!-- MODAL REGISTRO DE VISITA -->
+    <div id="modal-visita" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-camera-retro text-emerald-600"></i> Captura de Evidencia
+                </h3>
+                <button onclick="cerrarModalVisita()" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Fotografía Obligatoria con GPS Stamp</label>
+                    <input type="file" id="input-foto" accept="image/*" capture="environment" onchange="procesarFotoConGPSReal(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 border border-slate-200 rounded-xl p-2">
+                </div>
+
+                <div class="relative border-2 border-dashed border-slate-300 rounded-xl p-2 text-center bg-slate-50">
+                    <canvas id="canvas-preview" class="max-h-56 mx-auto rounded-lg hidden shadow-md"></canvas>
+                    <div id="placeholder-foto" class="py-8 text-slate-400 text-xs">
+                        <i class="fa-solid fa-image text-3xl mb-2 text-slate-300"></i>
+                        <p>Tome la fotografía. Se sincronizará al instante en Supabase.</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Observaciones / Avance</label>
+                    <textarea id="input-avance" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Escriba los detalles de la visita..."></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <button onclick="guardarVisitaExitosa()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-xs shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-circle-check"></i> Registrar Visita
+                    </button>
+                    <button onclick="marcarIncidenciaAusente()" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl text-xs shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Cliente Ausente
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL BITÁCORA -->
+    <div id="modal-evidencias" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-3 no-print">
+                <div>
+                    <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-book-open text-emerald-600"></i> Bitácora Consolidada
+                    </h3>
+                    <p class="text-xs text-slate-500">Historial completo sincronizado vía Supabase.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow">
+                        <i class="fa-solid fa-print"></i> Exportar a PDF
+                    </button>
+                    <button onclick="cerrarModalEvidencias()" class="text-slate-400 hover:text-slate-600 text-xl px-2"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+
+            <div id="contenedor-grid-evidencias" class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4 p-1"></div>
+        </div>
+    </div>
+
     <script>
-        // CONFIGURACIÓN DE SUPABASE
-        const SUPABASE_URL = 'https://tu-proyecto.supabase.co';
-        const SUPABASE_ANON_KEY = 'tu-clave-anon-aqui';
+        // CONFIGURACIÓN CONEXIÓN NUBE SUPABASE
+        const SUPABASE_URL = "https://lcqztstpefwlwrmkerau.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_YOLr5vJUSRUE13Ud403_RA_xmuR9FJQ";
+
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // CREDENCIALES SEPARADAS PARA EVITAR BORRADOS MULTIDISPOSITIVO
-        const CLAVES_SISTEMA = {
-            GERENCIA: { clave: "1596", rol: "Gerencia", sesionId: "rutas_gerencia_1596_session" },
-            GESTOR: { clave: "4862", rol: "Gestor de Cartera", sesionId: "rutas_gestor_4862_session" }
+        const AGENCIA_CENTRAL = { lat: 15.032100742090686, lng: -91.15299656594703 };
+
+        let usuarioActual = null;
+        let rolActual = null;
+        let vistaAdminSeleccionada = "todos";
+        let map = null;
+        let marcadoresAsesores = {};
+        let capasTrayectorias = {};
+        let polylinesAsesores = [];
+        let watchId = null;
+        let paradasVisitandoIndex = null;
+        let fotoDataUrlActual = "";
+
+        const COLORES_ASESORES = ["#2563eb", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4"];
+
+        const baseInicial = {
+            "1596": { id: "1596", nombre: "Administrador Central (Gerencia)", rol: "admin", color: "#1e293b", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] },
+            "4862": { id: "4862", nombre: "Gestor de Cartera", rol: "admin", color: "#0f172a", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] },
+            "1346": { id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#2563eb", lat: null, lng: null, ultimaHoraGps: "Sin señal", historial: [], puntos: [] },
+            "7946": { id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#10b981", lat: null, lng: null, ultimaHoraGps: "Sin señal", historial: [], puntos: [] }
         };
 
-        let fotoBase64Temp = "";
-        let arrayVisitasLocal = [];
+        let asesoresDB = baseInicial;
 
-        window.onload = function() {
-            let activeRol = localStorage.getItem("rutas_user_rol");
-            if (activeRol) {
-                mostrarInterfazSystem(activeRol);
-                sincronizarConSupabase();
+        function recalcularParadaActiva(usuario) {
+            if (!usuario || !usuario.puntos) return 0;
+            let primeraPendiente = 0;
+            for (let i = 0; i < usuario.puntos.length; i++) {
+                if (usuario.puntos[i].estado === "pendiente" || !usuario.puntos[i].estado) {
+                    primeraPendiente = i;
+                    break;
+                }
+                if (i === usuario.puntos.length - 1) {
+                    primeraPendiente = usuario.puntos.length;
+                }
             }
-        };
+            return primeraPendiente;
+        }
 
-        function validarAcceso() {
-            const pass = document.getElementById("inputClave").value.trim();
-            let user = null;
+        async function sincronizarDesdeSupabase() {
+            let { data, error } = await supabaseClient
+                .from('sistema_flota')
+                .select('*')
+                .eq('id', 'config_global')
+                .maybeSingle();
 
-            if (pass === CLAVES_SISTEMA.GERENCIA.clave) user = CLAVES_SISTEMA.GERENCIA;
-            else if (pass === CLAVES_SISTEMA.GESTOR.clave) user = CLAVES_SISTEMA.GESTOR;
-
-            if (user) {
-                // Guarda sesiones aisladas en cada dispositivo
-                localStorage.setItem("rutas_user_rol", user.rol);
-                localStorage.setItem("rutas_user_session", user.sesionId);
-                mostrarInterfazSystem(user.rol);
-                sincronizarConSupabase();
+            if (data && data.contenido) {
+                asesoresDB = data.contenido;
+                // Asegurar que exista el gestor 4862 si el registro en nube era viejo
+                if (!asesoresDB["4862"]) {
+                    asesoresDB["4862"] = { id: "4862", nombre: "Gestor de Cartera", rol: "admin", color: "#0f172a", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] };
+                }
             } else {
-                alert("PIN no válido. Utilice 1596 para Gerencia o 4862 para Gestor.");
+                await supabaseClient.from('sistema_flota').upsert({ id: 'config_global', contenido: baseInicial });
+                asesoresDB = baseInicial;
             }
-        }
 
-        function mostrarInterfazSystem(rol) {
-            document.getElementById("loginModal").classList.add("hidden");
-            document.getElementById("appRutas").classList.remove("hidden");
-            document.getElementById("txtRolSesion").innerText = `Rol: ${rol}`;
-        }
-
-        function cerrarSesion() {
-            localStorage.removeItem("rutas_user_rol");
-            localStorage.removeItem("rutas_user_session");
-            document.getElementById("inputClave").value = "";
-            document.getElementById("appRutas").classList.add("hidden");
-            document.getElementById("loginModal").classList.remove("hidden");
-        }
-
-        function convertirFotoBase64(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) { fotoBase64Temp = e.target.result; };
-                reader.readAsDataURL(input.files[0]);
+            if (usuarioActual && asesoresDB[usuarioActual.id]) {
+                usuarioActual = asesoresDB[usuarioActual.id];
             }
+            if (rolActual === "admin") poblarSelectVistaAdmin();
+            renderizarListaParadas();
+            actualizarDibujoRutaMapa();
+            actualizarPanelTelemetria();
         }
 
-        async function guardarRegistroVisita() {
-            const cliente = document.getElementById("txtClienteNombre").value.trim();
-            const monto = document.getElementById("txtMontoCobrado").value.trim();
-            const asesor = document.getElementById("selectAsesor").value;
+        function iniciarEscuchaSupabaseRealtime() {
+            sincronizarDesdeSupabase();
 
-            if (!cliente) {
-                alert("Ingrese el nombre del cliente.");
+            supabaseClient
+                .channel('public:sistema_flota')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'sistema_flota' }, payload => {
+                    if (payload.new && payload.new.contenido) {
+                        asesoresDB = payload.new.contenido;
+                        if (usuarioActual && asesoresDB[usuarioActual.id]) {
+                            usuarioActual = asesoresDB[usuarioActual.id];
+                        }
+                        if (rolActual === "admin") poblarSelectVistaAdmin();
+                        renderizarListaParadas();
+                        actualizarDibujoRutaMapa();
+                        actualizarPanelTelemetria();
+                    }
+                })
+                .subscribe();
+        }
+
+        async function guardarEnSupabase() {
+            await supabaseClient.from('sistema_flota').upsert({ id: 'config_global', contenido: asesoresDB });
+        }
+
+        iniciarEscuchaSupabaseRealtime();
+
+        async function intentarLogin() {
+            await sincronizarDesdeSupabase();
+            const rolSeleccionado = document.getElementById("login-role").value;
+            const pass = document.getElementById("login-pass").value.trim();
+            
+            let cuenta = asesoresDB[pass] || baseInicial[pass];
+
+            if (!cuenta) {
+                alert("PIN o clave incorrecta.");
                 return;
             }
 
-            const nuevoRegistro = {
-                id: Date.now(),
-                cliente: cliente,
-                monto: monto ? parseFloat(monto) : 0,
-                asesor: asesor,
-                foto: fotoBase64Temp,
-                fecha: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            };
-
-            // Intentar enviar a Supabase primero
-            try {
-                const { error } = await supabaseClient.from('sistema_flota').insert([
-                    { datos_json: nuevoRegistro }
-                ]);
-
-                if (error) console.log("Guardando en modo local fallback...");
-            } catch (err) {
-                console.log("Supabase desconectado, guardando en local...");
+            if (rolSeleccionado === "admin" && cuenta.rol !== "admin") {
+                alert("⚠️ Esta clave pertenece a un perfil de Asesor.");
+                return;
             }
 
-            // Guardar localmente
-            arrayVisitasLocal.unshift(nuevoRegistro);
-            renderizarVisitas();
+            if (rolSeleccionado === "asesor" && cuenta.rol !== "asesor") {
+                alert("⚠️ Seleccione 'Administrador' en el tipo de acceso.");
+                return;
+            }
 
-            // Limpiar formulario
-            document.getElementById("txtClienteNombre").value = "";
-            document.getElementById("txtMontoCobrado").value = "";
-            document.getElementById("fotoVisita").value = "";
-            fotoBase64Temp = "";
-            alert("¡Visita registrada correctamente!");
+            rolActual = cuenta.rol;
+            usuarioActual = cuenta;
+            iniciarSistemaApp();
         }
 
-        async function sincronizarConSupabase() {
-            document.getElementById("lblStatusText").innerText = "Sincronizando...";
-            
-            try {
-                const { data, error } = await supabaseClient
-                    .from('sistema_flota')
-                    .select('*')
-                    .order('created_at', { ascending: false })
-                    .limit(20);
+        function cerrarSesion() {
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+            document.getElementById("app-container").classList.add("hidden");
+            document.getElementById("login-screen").classList.remove("hidden");
+            document.getElementById("login-pass").value = "";
+        }
 
-                if (!error && data && data.length > 0) {
-                    arrayVisitasLocal = data.map(item => item.datos_json || item);
+        async function iniciarSistemaApp() {
+            document.getElementById("login-screen").classList.add("hidden");
+            document.getElementById("app-container").classList.remove("hidden");
+            document.getElementById("input-coordenadas").value = "";
+
+            await sincronizarDesdeSupabase();
+
+            if (rolActual === "admin") {
+                document.getElementById("header-title").innerText = "Panel Gerencial Central";
+                document.getElementById("user-badge").innerText = `${usuarioActual.nombre} (${usuarioActual.id})`;
+                document.getElementById("admin-controls-box").style.display = "block";
+                document.getElementById("admin-selector-box").style.display = "block";
+                document.getElementById("admin-lock-container").style.display = "block";
+                poblarSelectVistaAdmin();
+            } else {
+                document.getElementById("header-title").innerText = `Ruta Activa - ${usuarioActual.nombre}`;
+                document.getElementById("user-badge").innerText = `PIN: ${usuarioActual.id}`;
+                document.getElementById("admin-selector-box").style.display = "none";
+                document.getElementById("admin-lock-container").style.display = "none";
+                document.getElementById("admin-controls-box").style.display = usuarioActual.cerrado ? "none" : "block";
+            }
+
+            setTimeout(() => {
+                inicializarMapaLeaflet();
+                renderizarListaParadas();
+                if (rolActual === "asesor") activarGPSReal();
+            }, 200);
+        }
+
+        function poblarSelectVistaAdmin() {
+            const select = document.getElementById("select-vista-asesor");
+            let valActual = select.value || "todos";
+            select.innerHTML = `<option value="todos">🌍 Ver Todos los Asesores en Simultáneo</option>`;
+            Object.keys(asesoresDB).forEach(pin => {
+                let usr = asesoresDB[pin];
+                if (usr && usr.rol === "asesor") {
+                    let opt = document.createElement("option");
+                    opt.value = pin;
+                    opt.innerText = usr.nombre + ` (PIN: ${pin})`;
+                    select.appendChild(opt);
                 }
-                
-                document.getElementById("lblStatusText").innerText = "Supabase Conectado";
-                document.getElementById("lblStatusText").className = "text-xs font-semibold text-emerald-400";
-            } catch (e) {
-                document.getElementById("lblStatusText").innerText = "Modo Local Activo";
-                document.getElementById("lblStatusText").className = "text-xs font-semibold text-amber-400";
-            }
-
-            renderizarVisitas();
+            });
+            select.value = valActual;
         }
 
-        function renderizarVisitas() {
-            const lista = document.getElementById("listaVisitas");
-            document.getElementById("cantRegistros").innerText = `${arrayVisitasLocal.length} Registros`;
+        function cambiarVistaAdmin() {
+            vistaAdminSeleccionada = document.getElementById("select-vista-asesor").value;
+            renderizarListaParadas();
+            actualizarDibujoRutaMapa();
+            actualizarPanelTelemetria();
+        }
 
-            if (arrayVisitasLocal.length === 0) {
-                lista.innerHTML = '<div class="text-center py-6 text-slate-600 text-xs bg-slate-900/50 rounded-2xl border border-slate-800">Sin registros guardados.</div>';
+        function actualizarPanelTelemetria() {
+            let target = usuarioActual;
+            if (rolActual === "admin") {
+                if (vistaAdminSeleccionada !== "todos" && asesoresDB[vistaAdminSeleccionada]) {
+                    target = asesoresDB[vistaAdminSeleccionada];
+                } else {
+                    document.getElementById("txt-ultima-act").innerText = "Monitoreo General";
+                    document.getElementById("txt-coords-envivo").innerText = "Supabase en tiempo real activo";
+                    return;
+                }
+            }
+
+            if (target && target.lat && target.lng) {
+                document.getElementById("txt-ultima-act").innerText = target.ultimaHoraGps || "Transmitiendo...";
+                document.getElementById("txt-coords-envivo").innerText = `Lat: ${target.lat.toFixed(6)}, Lng: ${target.lng.toFixed(6)}`;
+            } else {
+                document.getElementById("txt-ultima-act").innerText = "Esperando señal...";
+                document.getElementById("txt-coords-envivo").innerText = "El asesor aún no activa el GPS";
+            }
+        }
+
+        function inicializarMapaLeaflet() {
+            if (!map) {
+                map = L.map('map').setView([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], 14);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+                let agIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color:#1e293b;color:white;padding:8px;border-radius:50%;text-align:center;"><i class="fa-solid fa-building-columns"></i></div>`,
+                    iconSize: [36, 36], iconAnchor: [18, 18]
+                });
+                L.marker([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], { icon: agIcon }).addTo(map).bindPopup("<b>Agencia Central</b>");
+            } else {
+                map.invalidateSize();
+            }
+            actualizarDibujoRutaMapa();
+        }
+
+        function actualizarDibujoRutaMapa() {
+            if (!map) return;
+            
+            polylinesAsesores.forEach(l => map.removeLayer(l));
+            polylinesAsesores = [];
+
+            let asesoresARenderizar = [];
+            if (rolActual === "asesor") {
+                asesoresARenderizar = [usuarioActual];
+            } else {
+                if (vistaAdminSeleccionada === "todos") {
+                    Object.keys(asesoresDB).forEach(pin => {
+                        if (asesoresDB[pin] && asesoresDB[pin].rol === "asesor") asesoresARenderizar.push(asesoresDB[pin]);
+                    });
+                } else if (asesoresDB[vistaAdminSeleccionada]) {
+                    asesoresARenderizar = [asesoresDB[vistaAdminSeleccionada]];
+                }
+            }
+
+            asesoresARenderizar.forEach((usr, index) => {
+                if (!usr) return;
+                let colorAsesor = usr.color || COLORES_ASESORES[index % COLORES_ASESORES.length];
+
+                if (usr.puntos && usr.puntos.length > 0) {
+                    let latLngsRuta = [[AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]];
+                    usr.puntos.forEach((p, idx) => {
+                        latLngsRuta.push([p.lat, p.lng]);
+                        let colorPin = (p.estado === 'completado') ? '#10b981' : (p.estado === 'incidencia' ? '#f59e0b' : colorAsesor);
+                        
+                        let pinIcon = L.divIcon({
+                            className: 'custom-div-icon',
+                            html: `<div style="background-color:${colorPin};color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${idx + 1}</div>`,
+                            iconSize: [28, 28], iconAnchor: [14, 14]
+                        });
+                        
+                        let marker = L.marker([p.lat, p.lng], { icon: pinIcon }).addTo(map);
+                        marker.bindPopup(`<b>${usr.nombre}</b><br>${p.cliente}<br>Estado: ${p.estado}`);
+                        polylinesAsesores.push(marker);
+                    });
+
+                    latLngsRuta.push([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]);
+                    let polylineRuta = L.polyline(latLngsRuta, { color: colorAsesor, weight: 3, opacity: 0.4, dashArray: '6, 6' }).addTo(map);
+                    polylinesAsesores.push(polylineRuta);
+                }
+
+                if (usr.historial && usr.historial.length > 1) {
+                    if (capasTrayectorias[usr.id]) map.removeLayer(capasTrayectorias[usr.id]);
+                    let lineaTrayectoria = L.polyline(usr.historial, { color: colorAsesor, weight: 5, opacity: 0.85 }).addTo(map);
+                    capasTrayectorias[usr.id] = lineaTrayectoria;
+                    polylinesAsesores.push(lineaTrayectoria);
+                }
+
+                if (usr.lat && usr.lng) {
+                    let motoIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div class="pulse-marker-active" style="background-color:${colorAsesor};color:white;padding:8px;border-radius:50%;text-align:center;border:2px solid white;"><i class="fa-solid fa-motorcycle"></i></div>`,
+                        iconSize: [36, 36], iconAnchor: [18, 18]
+                    });
+
+                    if (marcadoresAsesores[usr.id]) {
+                        marcadoresAsesores[usr.id].setLatLng([usr.lat, usr.lng]);
+                    } else {
+                        let m = L.marker([usr.lat, usr.lng], { icon: motoIcon }).addTo(map).bindPopup(`<b>${usr.nombre}</b><br>Ubicación en vivo`);
+                        marcadoresAsesores[usr.id] = m;
+                    }
+                }
+            });
+        }
+
+        async function registrarNuevoAsesorAdmin() {
+            const nombre = document.getElementById("nuevo-nombre-asesor").value.trim();
+            const pin = document.getElementById("nuevo-pin-asesor").value.trim();
+
+            if (!nombre || !pin) {
+                alert("Ingrese el nombre y el PIN.");
+                return;
+            }
+            if (asesoresDB[pin]) {
+                alert("Este PIN ya existe.");
+                return;
+            }
+
+            let colorAsignado = COLORES_ASESORES[Object.keys(asesoresDB).length % COLORES_ASESORES.length];
+            asesoresDB[pin] = { 
+                id: pin, nombre: nombre, rol: "asesor", cerrado: false, paradaActiva: 0, 
+                color: colorAsignado, lat: null, lng: null,
+                ultimaHoraGps: "Esperando señal", historial: [], puntos: [] 
+            };
+            
+            await guardarEnSupabase();
+            document.getElementById("nuevo-nombre-asesor").value = "";
+            document.getElementById("nuevo-pin-asesor").value = "";
+            poblarSelectVistaAdmin();
+            alert(`¡Asesor ${nombre} (PIN: ${pin}) guardado en Supabase!`);
+        }
+
+        async function optimizarYGuardarRuta() {
+            let targetPin = null;
+            if (rolActual === "admin") {
+                if (vistaAdminSeleccionada === "todos") {
+                    let seleccion = prompt("Ingrese el PIN del Asesor al cual asignar la ruta:", "1346");
+                    if (!seleccion || !asesoresDB[seleccion]) {
+                        alert("PIN inválido o cancelado.");
+                        return;
+                    }
+                    targetPin = seleccion;
+                } else {
+                    targetPin = vistaAdminSeleccionada;
+                }
+            } else {
+                targetPin = usuarioActual.id;
+            }
+
+            let textoCoords = document.getElementById("input-coordenadas").value.trim();
+            if (!textoCoords) {
+                alert("Ingrese al menos una coordenada en formato lat, lng");
+                return;
+            }
+
+            let lineas = textoCoords.split("\n");
+            let nuevosPuntos = [];
+            lineas.forEach((linea, idx) => {
+                let partes = linea.split(",");
+                if (partes.length >= 2) {
+                    let lat = parseFloat(partes[0].trim());
+                    let lng = parseFloat(partes[1].trim());
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        nuevosPuntos.push({
+                            lat: lat,
+                            lng: lng,
+                            cliente: `Cliente Destino #${idx + 1}`,
+                            estado: "pendiente",
+                            foto: "",
+                            avance: ""
+                        });
+                    }
+                }
+            });
+
+            if (nuevosPuntos.length === 0) {
+                alert("No se detectaron coordenadas válidas.");
+                return;
+            }
+
+            asesoresDB[targetPin].puntos = nuevosPuntos;
+            asesoresDB[targetPin].paradaActiva = 0;
+            asesoresDB[targetPin].cerrado = false;
+
+            await guardarEnSupabase();
+            alert(`¡Ruta asignada correctamente al asesor ${asesoresDB[targetPin].nombre}!`);
+            document.getElementById("input-coordenadas").value = "";
+            renderizarListaParadas();
+            actualizarDibujoRutaMapa();
+        }
+
+        function toggleCierreCoordenadas() {
+            if (rolActual !== "admin") return;
+            let targetPin = (vistaAdminSeleccionada === "todos") ? Object.keys(asesoresDB).find(k => asesoresDB[k].rol === 'asesor') : vistaAdminSeleccionada;
+            if (!targetPin || !asesoresDB[targetPin]) {
+                alert("Seleccione un asesor específico en el menú desplegable para bloquear/desbloquear.");
+                return;
+            }
+
+            asesoresDB[targetPin].cerrado = !asesoresDB[targetPin].cerrado;
+            guardarEnSupabase();
+            renderizarListaParadas();
+            alert(`Estado de ruta cambiado para ${asesoresDB[targetPin].nombre}`);
+        }
+
+        function renderizarListaParadas() {
+            const contenedor = document.getElementById("lista-paradas");
+            let target = usuarioActual;
+            if (rolActual === "admin") {
+                if (vistaAdminSeleccionada !== "todos" && asesoresDB[vistaAdminSeleccionada]) {
+                    target = asesoresDB[vistaAdminSeleccionada];
+                } else {
+                    // Vista general admin
+                    let htmlGral = `<div class="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-2">
+                        <h4 class="font-bold text-xs text-slate-700">Resumen General de Asesores</h4>`;
+                    Object.keys(asesoresDB).forEach(pin => {
+                        let usr = asesoresDB[pin];
+                        if (usr.rol === "asesor") {
+                            let completados = (usr.puntos || []).filter(p => p.estado === 'completado').length;
+                            let total = (usr.puntos || []).length;
+                            htmlGral += `<div class="flex justify-between items-center text-xs border-b pb-1">
+                                <span><b>${usr.nombre}</b></span>
+                                <span class="font-mono text-emerald-600">${completados}/${total} completadas</span>
+                            </div>`;
+                        }
+                    });
+                    htmlGral += `</div>`;
+                    contenedor.innerHTML = htmlGral;
+                    return;
+                }
+            }
+
+            if (!target || !target.puntos || target.puntos.length === 0) {
+                contenedor.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">No hay ruta asignada actualmente.</div>`;
                 return;
             }
 
             let html = "";
-            arrayVisitasLocal.forEach(reg => {
+            target.puntos.forEach((p, idx) => {
+                let badgeColor = "bg-slate-100 text-slate-600 border-slate-200";
+                let textoEstado = `Parada #${idx + 1}`;
+                if (p.estado === "completado") {
+                    badgeColor = "bg-emerald-100 text-emerald-700 border-emerald-200";
+                    textoEstado = "Completado ✓";
+                } else if (p.estado === "incidencia") {
+                    badgeColor = "bg-amber-100 text-amber-700 border-amber-200";
+                    textoEstado = "Ausente ⚠";
+                }
+
                 html += `
-                    <div class="bg-slate-900 border border-slate-800/80 rounded-xl p-3 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            ${reg.foto ? 
-                                `<img src="${reg.foto}" class="w-10 h-10 object-cover rounded-lg border border-slate-700">` : 
-                                `<div class="w-10 h-10 bg-slate-800 text-slate-400 rounded-lg flex items-center justify-center text-xs"><i class="fa-solid fa-user"></i></div>`
-                            }
-                            <div>
-                                <h4 class="text-xs font-bold text-white">${reg.cliente}</h4>
-                                <p class="text-[10px] text-slate-400">${reg.asesor} • ${reg.fecha || 'Hoy'}</p>
-                            </div>
+                    <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-sm flex items-center justify-between text-xs">
+                        <div>
+                            <span class="font-bold block text-slate-800">${p.cliente}</span>
+                            <span class="text-[10px] font-mono text-slate-500">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span>
                         </div>
-                        <div class="text-right">
-                            <span class="text-xs font-bold text-emerald-400">Q ${(reg.monto || 0).toFixed(2)}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2.5 py-1 rounded-lg border font-semibold text-[10px] ${badgeColor}">${textoEstado}</span>
+                            ${rolActual === "asesor" && p.estado !== "completado" && p.estado !== "incidencia" ? `
+                                <button onclick="abrirModalVisita(${idx})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-xs transition shadow">
+                                    <i class="fa-solid fa-camera"></i> Visitar
+                                </button>
+                            ` : ""}
                         </div>
                     </div>
                 `;
             });
+            contenedor.innerHTML = html;
+        }
 
-            lista.innerHTML = html;
+        function activarGPSReal() {
+            if (rolActual !== "asesor") return;
+            const btn = document.getElementById("btn-gps-toggle");
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Transmitiendo...`;
+            btn.className = "bg-blue-600 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow";
+
+            if ("geolocation" in navigator) {
+                watchId = navigator.geolocation.watchPosition(position => {
+                    let lat = position.coords.latitude;
+                    let lng = position.coords.longitude;
+                    let speed = position.coords.speed ? (position.coords.speed * 3.6).toFixed(1) : "0.0";
+
+                    document.getElementById("waze-speed").innerText = speed;
+                    
+                    usuarioActual.lat = lat;
+                    usuarioActual.lng = lng;
+                    usuarioActual.ultimaHoraGps = new Date().toLocaleTimeString();
+
+                    if (!usuarioActual.historial) usuarioActual.historial = [];
+                    usuarioActual.historial.push([lat, lng]);
+
+                    // Calcular distancia al próximo punto pendiente
+                    if (usuarioActual.puntos && usuarioActual.puntos.length > 0) {
+                        let idxActivo = recalcularParadaActiva(usuarioActual);
+                        if (idxActivo < usuarioActual.puntos.length) {
+                            let pDestino = usuarioActual.puntos[idxActivo];
+                            let distMeters = calcularDistanciaMetros(lat, lng, pDestino.lat, pDestino.lng);
+                            document.getElementById("waze-distance").innerText = Math.round(distMeters);
+                        } else {
+                            document.getElementById("waze-distance").innerText = "0";
+                        }
+                    }
+
+                    asesoresDB[usuarioActual.id] = usuarioActual;
+                    guardarEnSupabase();
+                    actualizarDibujoRutaMapa();
+                    actualizarPanelTelemetria();
+
+                }, error => {
+                    console.error("Error GPS:", error);
+                }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
+            } else {
+                alert("Geolocalización no soportada en este navegador.");
+            }
+        }
+
+        function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
+            let R = 6371000;
+            let dLat = (lat2 - lat1) * Math.PI / 180;
+            let dLon = (lon2 - lon1) * Math.PI / 180;
+            let a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function abrirModalVisita(index) {
+            paradasVisitandoIndex = index;
+            document.getElementById("input-foto").value = "";
+            document.getElementById("input-avance").value = "";
+            document.getElementById("canvas-preview").classList.add("hidden");
+            document.getElementById("placeholder-foto").classList.remove("hidden");
+            fotoDataUrlActual = "";
+            document.getElementById("modal-visita").classList.remove("hidden");
+        }
+
+        function cerrarModalVisita() {
+            document.getElementById("modal-visita").classList.add("hidden");
+        }
+
+        function procesarFotoConGPSReal(event) {
+            let file = event.target.files[0];
+            if (!file) return;
+
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                let img = new Image();
+                img.onload = function() {
+                    let canvas = document.getElementById("canvas-preview");
+                    let ctx = canvas.getContext("2d");
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+
+                    // Sellar GPS timestamp en la foto
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                    ctx.fillRect(10, canvas.height - 60, canvas.width - 20, 45);
+                    ctx.fillStyle = "#ffffff";
+                    ctx.font = "bold 20px monospace";
+                    ctx.fillText(`GPS STAMP: ${usuarioActual.lat ? usuarioActual.lat.toFixed(5) : 0}, ${usuarioActual.lng ? usuarioActual.lng.toFixed(5) : 0}`, 20, canvas.height - 32);
+                    ctx.fillText(`FECHA: ${new Date().toLocaleString()}`, 20, canvas.height - 12);
+
+                    fotoDataUrlActual = canvas.toDataURL("image/jpeg", 0.8);
+                    canvas.classList.remove("hidden");
+                    document.getElementById("placeholder-foto").classList.add("hidden");
+                }
+                img.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        async function guardarVisitaExitosa() {
+            if (paradasVisitandoIndex === null) return;
+            let avance = document.getElementById("input-avance").value.trim();
+
+            usuarioActual.puntos[paradasVisitandoIndex].estado = "completado";
+            usuarioActual.puntos[paradasVisitandoIndex].foto = fotoDataUrlActual;
+            usuarioActual.puntos[paradasVisitandoIndex].avance = avance || "Visita completada con éxito";
+
+            asesoresDB[usuarioActual.id] = usuarioActual;
+            await guardarEnSupabase();
+            cerrarModalVisita();
+            renderizarListaParadas();
+            actualizarDibujoRutaMapa();
+            alert("¡Visita registrada correctamente en Supabase!");
+        }
+
+        async function marcarIncidenciaAusente() {
+            if (paradasVisitandoIndex === null) return;
+            usuarioActual.puntos[paradasVisitandoIndex].estado = "incidencia";
+            usuarioActual.puntos[paradasVisitandoIndex].avance = "Cliente ausente / Sin respuesta";
+
+            asesoresDB[usuarioActual.id] = usuarioActual;
+            await guardarEnSupabase();
+            cerrarModalVisita();
+            renderizarListaParadas();
+            actualizarDibujoRutaMapa();
+            alert("Se marcó la incidencia por ausencia.");
+        }
+
+        function abrirModalEvidencias() {
+            const grid = document.getElementById("contenedor-grid-evidencias");
+            let html = "";
+
+            Object.keys(asesoresDB).forEach(pin => {
+                let usr = asesoresDB[pin];
+                if (usr.puntos) {
+                    usr.puntos.forEach((p, idx) => {
+                        if (p.estado === "completado" || p.estado === "incidencia") {
+                            html += `
+                                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2 shadow-sm">
+                                    <div class="flex justify-between items-center text-xs font-bold text-slate-700">
+                                        <span>${usr.nombre} — ${p.cliente}</span>
+                                        <span class="px-2 py-0.5 rounded text-[10px] ${p.estado === 'completado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${p.estado.toUpperCase()}</span>
+                                    </div>
+                                    <p class="text-xs text-slate-600">${p.avance || 'Sin observaciones'}</p>
+                                    ${p.foto ? `<img src="${p.foto}" class="w-full h-40 object-cover rounded-lg border shadow-inner">` : '<div class="text-xs text-slate-400 italic">Sin fotografía registrada</div>'}
+                                </div>
+                            `;
+                        }
+                    });
+                }
+            });
+
+            grid.innerHTML = html || `<div class="text-center col-span-2 py-10 text-slate-400 text-xs">No hay registros en la bitácora aún.</div>`;
+            document.getElementById("modal-evidencias").classList.remove("hidden");
+        }
+
+        function cerrarModalEvidencias() {
+            document.getElementById("modal-evidencias").classList.add("hidden");
+        }
+
+        function exportarReporteExcel() {
+            let csvContent = "data:text/csv;charset=utf-8,Asesor,Cliente,Estado,Avance\n";
+            Object.keys(asesoresDB).forEach(pin => {
+                let usr = asesoresDB[pin];
+                if (usr.puntos) {
+                    usr.puntos.forEach(p => {
+                        csvContent += `"${usr.nombre}","${p.cliente}","${p.estado || 'pendiente'}","${p.avance || ''}"\n`;
+                    });
+                }
+            });
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "reporte_rutas_mano_amiga.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
