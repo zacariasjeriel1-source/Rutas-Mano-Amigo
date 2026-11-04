@@ -359,7 +359,6 @@
                 if (!asesoresDB["4862"]) {
                     asesoresDB["4862"] = { id: "4862", nombre: "Gestor de Cartera", rol: "admin", color: "#0f172a", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] };
                 }
-                // Asegurar array de emergentes
                 Object.keys(asesoresDB).forEach(k => {
                     if(asesoresDB[k].rol === 'asesor' && !asesoresDB[k].emergentes) asesoresDB[k].emergentes = [];
                 });
@@ -538,6 +537,8 @@
             polylinesAsesores.forEach(l => map.removeLayer(l));
             polylinesAsesores = [];
 
+            let fechaHoy = new Date().toLocaleDateString(); // Formato DD/MM/YYYY local
+
             let asesoresARenderizar = [];
             if (rolActual === "asesor") {
                 asesoresARenderizar = [usuarioActual];
@@ -578,7 +579,7 @@
                     polylinesAsesores.push(polylineRuta);
                 }
 
-                // Renderizar Visitas Emergentes en el Mapa (Marcador azul con rayo)
+                // Renderizar Visitas Emergentes
                 if (usr.emergentes && usr.emergentes.length > 0) {
                     usr.emergentes.forEach((em, eIdx) => {
                         let emIcon = L.divIcon({
@@ -592,11 +593,27 @@
                     });
                 }
 
-                if (usr.historial && usr.historial.length > 1) {
-                    if (capasTrayectorias[usr.id]) map.removeLayer(capasTrayectorias[usr.id]);
-                    let lineaTrayectoria = L.polyline(usr.historial, { color: colorAsesor, weight: 5, opacity: 0.85 }).addTo(map);
-                    capasTrayectorias[usr.id] = lineaTrayectoria;
-                    polylinesAsesores.push(lineaTrayectoria);
+                // FILTRAR TRAYECTORIA EXCLUSIVAMENTE DEL DÍA DE HOY
+                if (usr.historial && usr.historial.length > 0) {
+                    let puntosHoy = [];
+                    usr.historial.forEach(item => {
+                        // Soportar formato estructurado con fecha [lat, lng, fecha] o formato antiguo [lat, lng]
+                        if (Array.isArray(item)) {
+                            if (item.length >= 3 && item[2] === fechaHoy) {
+                                puntosHoy.push([item[0], item[1]]);
+                            } else if (item.length === 2) {
+                                // Si es formato antiguo sin fecha, lo aceptamos por compatibilidad
+                                puntosHoy.push([item[0], item[1]]);
+                            }
+                        }
+                    });
+
+                    if (puntosHoy.length > 1) {
+                        if (capasTrayectorias[usr.id]) map.removeLayer(capasTrayectorias[usr.id]);
+                        let lineaTrayectoria = L.polyline(puntosHoy, { color: colorAsesor, weight: 5, opacity: 0.85 }).addTo(map);
+                        capasTrayectorias[usr.id] = lineaTrayectoria;
+                        polylinesAsesores.push(lineaTrayectoria);
+                    }
                 }
 
                 if (usr.lat && usr.lng) {
@@ -643,7 +660,6 @@
             alert(`¡Asesor ${nombre} (PIN: ${pin}) guardado en Supabase!`);
         }
 
-        // --- CORRECCIÓN ROBUSTA DE PARSER DE COORDENADAS ---
         async function optimizarYGuardarRuta() {
             let targetPin = null;
             if (rolActual === "admin") {
@@ -674,7 +690,6 @@
                 let lineaLimpia = linea.trim();
                 if (!lineaLimpia) return;
 
-                // Soporte universal para separar por comas, barras o guiones
                 let partes = lineaLimpia.split(/[,/\t|]+/);
                 if (partes.length >= 2) {
                     let lat = parseFloat(partes[0].trim());
@@ -821,7 +836,6 @@
 
             let html = "";
             
-            // Mostrar Visitas Emergentes primero si existen
             if (target && target.emergentes && target.emergentes.length > 0) {
                 html += `<div class="mb-2"><span class="text-[11px] font-bold text-blue-600 uppercase tracking-wider"><i class="fa-solid fa-bolt"></i> Visitas Emergentes Realizadas</span></div>`;
                 target.emergentes.forEach((em, eIdx) => {
@@ -901,7 +915,7 @@
             contenedor.innerHTML = html;
         }
 
-        // --- SISTEMA GPS ROBUSTO EN SEGUNDO PLANO Y PANTALLA BLOQUEADA ---
+        // --- GPS EN SEGUNDO PLANO Y REGISTRO CON FECHA DIARIA ---
         async function activarGPSReal() {
             if (rolActual !== "asesor") return;
             const btn = document.getElementById("btn-gps-toggle");
@@ -946,6 +960,7 @@
             let lat = position.coords.latitude;
             let lng = position.coords.longitude;
             let speed = position.coords.speed ? (position.coords.speed * 3.6).toFixed(1) : "0.0";
+            let fechaHoy = new Date().toLocaleDateString();
 
             document.getElementById("waze-speed").innerText = speed;
             
@@ -954,9 +969,11 @@
             usuarioActual.ultimaHoraGps = new Date().toLocaleTimeString();
 
             if (!usuarioActual.historial) usuarioActual.historial = [];
+            
+            // Guardar con formato estructurado [lat, lng, fecha]
             let ultimoPunto = usuarioActual.historial[usuarioActual.historial.length - 1];
             if (!ultimoPunto || ultimoPunto[0] !== lat || ultimoPunto[1] !== lng) {
-                usuarioActual.historial.push([lat, lng]);
+                usuarioActual.historial.push([lat, lng, fechaHoy]);
             }
 
             if (usuarioActual.puntos && usuarioActual.puntos.length > 0) {
@@ -1002,7 +1019,6 @@
             return R * c;
         }
 
-        // --- GESTIÓN VISITA RUTINARIA ---
         function abrirModalVisita(index) {
             paradasVisitandoIndex = index;
             document.getElementById("input-fotos").value = "";
@@ -1104,7 +1120,6 @@
             alert("Se marcó la incidencia por ausencia.");
         }
 
-        // --- GESTIÓN VISITA EMERGENTE ---
         function abrirModalVisitaEmergente() {
             if (!usuarioActual.lat || !usuarioActual.lng) {
                 alert("⚠️ Esperando señal GPS actual para ubicar la visita emergente...");
@@ -1212,7 +1227,6 @@
 
             Object.keys(asesoresDB).forEach(pin => {
                 let usr = asesoresDB[pin];
-                // Puntos normales completados o incidencia
                 if (usr.puntos) {
                     usr.puntos.forEach((p, idx) => {
                         if (p.estado === "completado" || p.estado === "incidencia") {
@@ -1241,7 +1255,6 @@
                     });
                 }
 
-                // Visitas Emergentes
                 if (usr.emergentes) {
                     usr.emergentes.forEach((em, eIdx) => {
                         let fotosHtml = "";
