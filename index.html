@@ -152,6 +152,13 @@
                     </div>
                 </div>
 
+                <!-- Botón de Visita Emergente (Para Asesores de Campo) -->
+                <div id="asesor-emergente-box" class="p-4 bg-emerald-50 border-b border-emerald-100 hidden">
+                    <button onclick="abrirModalVisitaEmergente()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md">
+                        <i class="fa-solid fa-bolt text-amber-300"></i> Registrar Visita Emergente (Fuera de Ruta)
+                    </button>
+                </div>
+
                 <!-- Telemetría Dinámica GPS -->
                 <div id="info-posicion-envivo" class="px-5 py-3 bg-slate-900 text-white text-xs space-y-1">
                     <div class="flex justify-between items-center font-bold">
@@ -189,7 +196,7 @@
         </div>
     </div>
 
-    <!-- MODAL REGISTRO DE VISITA -->
+    <!-- MODAL REGISTRO DE VISITA (RUTINARIA) -->
     <div id="modal-visita" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-3">
@@ -229,13 +236,53 @@
         </div>
     </div>
 
+    <!-- MODAL REGISTRO DE VISITA EMERGENTE -->
+    <div id="modal-emergente" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-bolt text-blue-600"></i> Registrar Visita Emergente (Fuera de Ruta)
+                </h3>
+                <button onclick="cerrarModalEmergente()" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Nombre del Cliente / Motivo Emergente</label>
+                    <input type="text" id="input-emergente-nombre" placeholder="Ej. Cliente Nuevo / Cobro Inesperado" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none font-medium">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Fotografías de Evidencia (Máx. 4)</label>
+                    <input type="file" id="input-fotos-emergente" accept="image/*" multiple onchange="procesarMultiplesFotosEmergentes(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 border border-slate-200 rounded-xl p-2">
+                </div>
+
+                <div id="grid-preview-emergente" class="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-xl border border-dashed border-slate-300">
+                    <div class="col-span-2 py-6 text-center text-slate-400 text-xs">
+                        <i class="fa-solid fa-images text-2xl mb-1 text-slate-300"></i>
+                        <p>No hay fotos seleccionadas (0/4)</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Observaciones / Detalles de la Emergencia</label>
+                    <textarea id="input-emergente-avance" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Describa el motivo de la visita fuera de ruta..."></textarea>
+                </div>
+
+                <button onclick="guardarVisitaEmergenteReal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-xs shadow transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Guardar y Sincronizar Visita Emergente
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL BITÁCORA -->
     <div id="modal-evidencias" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center border-b pb-3 no-print">
                 <div>
                     <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
-                        <i class="fa-solid fa-book-open text-emerald-600"></i> Bitácora Consolidada
+                        <i class="fa-solid fa-book-open text-emerald-600"></i> Bitácora Consolidada (Ruta y Emergentes)
                     </h3>
                     <p class="text-xs text-slate-500">Historial completo sincronizado vía Supabase.</p>
                 </div>
@@ -272,14 +319,15 @@
         let audioKeepAliveInterval = null;
         let paradasVisitandoIndex = null;
         let fotosDataUrlsActuales = [];
+        let fotosEmergentesActuales = [];
 
         const COLORES_ASESORES = ["#2563eb", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4"];
 
         const baseInicial = {
             "1596": { id: "1596", nombre: "Administrador Central (Gerencia)", rol: "admin", color: "#1e293b", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] },
             "4862": { id: "4862", nombre: "Gestor de Cartera", rol: "admin", color: "#0f172a", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] },
-            "1346": { id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#2563eb", lat: null, lng: null, ultimaHoraGps: "Sin señal", historial: [], puntos: [] },
-            "7946": { id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#10b981", lat: null, lng: null, ultimaHoraGps: "Sin señal", historial: [], puntos: [] }
+            "1346": { id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#2563eb", lat: null, lng: null, ultimaHoraGps: "Sin señal", historial: [], puntos: [], emergentes: [] },
+            "7946": { id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#10b981", lat: null, lng: null, ultimaHoraGps: "Sin señal", historial: [], puntos: [], emergentes: [] }
         };
 
         let asesoresDB = baseInicial;
@@ -311,6 +359,10 @@
                 if (!asesoresDB["4862"]) {
                     asesoresDB["4862"] = { id: "4862", nombre: "Gestor de Cartera", rol: "admin", color: "#0f172a", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] };
                 }
+                // Asegurar array de emergentes
+                Object.keys(asesoresDB).forEach(k => {
+                    if(asesoresDB[k].rol === 'asesor' && !asesoresDB[k].emergentes) asesoresDB[k].emergentes = [];
+                });
             } else {
                 await supabaseClient.from('sistema_flota').upsert({ id: 'config_global', contenido: baseInicial });
                 asesoresDB = baseInicial;
@@ -401,6 +453,7 @@
                 document.getElementById("admin-controls-box").style.display = "block";
                 document.getElementById("admin-selector-box").style.display = "block";
                 document.getElementById("admin-lock-container").style.display = "block";
+                document.getElementById("asesor-emergente-box").style.display = "none";
                 poblarSelectVistaAdmin();
             } else {
                 document.getElementById("header-title").innerText = `Ruta Activa - ${usuarioActual.nombre}`;
@@ -408,6 +461,7 @@
                 document.getElementById("admin-selector-box").style.display = "none";
                 document.getElementById("admin-lock-container").style.display = "none";
                 document.getElementById("admin-controls-box").style.display = usuarioActual.cerrado ? "none" : "block";
+                document.getElementById("asesor-emergente-box").style.display = "block";
             }
 
             setTimeout(() => {
@@ -501,6 +555,7 @@
                 if (!usr) return;
                 let colorAsesor = usr.color || COLORES_ASESORES[index % COLORES_ASESORES.length];
 
+                // Renderizar Ruta normal
                 if (usr.puntos && usr.puntos.length > 0) {
                     let latLngsRuta = [[AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]];
                     usr.puntos.forEach((p, idx) => {
@@ -521,6 +576,20 @@
                     latLngsRuta.push([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]);
                     let polylineRuta = L.polyline(latLngsRuta, { color: colorAsesor, weight: 3, opacity: 0.4, dashArray: '6, 6' }).addTo(map);
                     polylinesAsesores.push(polylineRuta);
+                }
+
+                // Renderizar Visitas Emergentes en el Mapa (Marcador azul con rayo)
+                if (usr.emergentes && usr.emergentes.length > 0) {
+                    usr.emergentes.forEach((em, eIdx) => {
+                        let emIcon = L.divIcon({
+                            className: 'custom-div-icon',
+                            html: `<div style="background-color:#2563eb;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"><i class="fa-solid fa-bolt text-amber-300"></i></div>`,
+                            iconSize: [28, 28], iconAnchor: [14, 14]
+                        });
+                        let markerEm = L.marker([em.lat, em.lng], { icon: emIcon }).addTo(map);
+                        markerEm.bindPopup(`<b>⚡ Emergente: ${em.cliente}</b><br>${em.avance}<br><a href="https://www.google.com/maps/search/?api=1&query=${em.lat},${em.lng}" target="_blank" style="color:blue;text-decoration:underline;">Abrir en Google Maps</a>`);
+                        polylinesAsesores.push(markerEm);
+                    });
                 }
 
                 if (usr.historial && usr.historial.length > 1) {
@@ -564,7 +633,7 @@
             asesoresDB[pin] = { 
                 id: pin, nombre: nombre, rol: "asesor", cerrado: false, paradaActiva: 0, 
                 color: colorAsignado, lat: null, lng: null,
-                ultimaHoraGps: "Esperando señal", historial: [], puntos: [] 
+                ultimaHoraGps: "Esperando señal", historial: [], puntos: [], emergentes: [] 
             };
             
             await guardarEnSupabase();
@@ -574,6 +643,7 @@
             alert(`¡Asesor ${nombre} (PIN: ${pin}) guardado en Supabase!`);
         }
 
+        // --- CORRECCIÓN ROBUSTA DE PARSER DE COORDENADAS ---
         async function optimizarYGuardarRuta() {
             let targetPin = null;
             if (rolActual === "admin") {
@@ -599,11 +669,13 @@
 
             let lineas = textoCoords.split("\n");
             let nuevosPuntos = [];
+            
             lineas.forEach((linea, idx) => {
                 let lineaLimpia = linea.trim();
                 if (!lineaLimpia) return;
 
-                let partes = lineaLimpia.split(/[,–-]/);
+                // Soporte universal para separar por comas, barras o guiones
+                let partes = lineaLimpia.split(/[,/\t|]+/);
                 if (partes.length >= 2) {
                     let lat = parseFloat(partes[0].trim());
                     let lng = parseFloat(partes[1].trim());
@@ -623,7 +695,7 @@
             });
 
             if (nuevosPuntos.length === 0) {
-                alert("No se detectaron coordenadas válidas.");
+                alert("⚠️ Coordenadas no válidas. Asegúrese de ingresar en formato: Latitud, Longitud, Nombre");
                 return;
             }
 
@@ -734,9 +806,10 @@
                         if (usr.rol === "asesor") {
                             let completados = (usr.puntos || []).filter(p => p.estado === 'completado').length;
                             let total = (usr.puntos || []).length;
+                            let emergentesCount = (usr.emergentes || []).length;
                             htmlGral += `<div class="flex justify-between items-center text-xs border-b pb-1">
                                 <span><b>${usr.nombre}</b></span>
-                                <span class="font-mono text-emerald-600">${completados}/${total} completadas</span>
+                                <span class="font-mono text-emerald-600">${completados}/${total} rutinas | <span class="text-blue-600">${emergentesCount} emergentes</span></span>
                             </div>`;
                         }
                     });
@@ -746,66 +819,89 @@
                 }
             }
 
-            if (!target || !target.puntos || target.puntos.length === 0) {
-                contenedor.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">No hay ruta asignada actualmente.</div>`;
-                return;
+            let html = "";
+            
+            // Mostrar Visitas Emergentes primero si existen
+            if (target && target.emergentes && target.emergentes.length > 0) {
+                html += `<div class="mb-2"><span class="text-[11px] font-bold text-blue-600 uppercase tracking-wider"><i class="fa-solid fa-bolt"></i> Visitas Emergentes Realizadas</span></div>`;
+                target.emergentes.forEach((em, eIdx) => {
+                    let enlaceMaps = `https://www.google.com/maps/search/?api=1&query=${em.lat},${em.lng}`;
+                    html += `
+                        <div class="p-3 bg-blue-50/60 rounded-xl border border-blue-200 shadow-sm flex items-center justify-between text-xs gap-2 mb-2">
+                            <div>
+                                <span class="font-bold block text-blue-900">⚡ ${em.cliente}</span>
+                                <span class="text-[10px] text-slate-600">${em.avance}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <a href="${enlaceMaps}" target="_blank" class="bg-blue-100 hover:bg-blue-200 text-blue-700 p-1.5 rounded-lg transition text-xs border border-blue-300" title="Ver en Google Maps">
+                                    <i class="fa-solid fa-map-location-dot"></i>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                });
             }
 
-            let html = "";
-            target.puntos.forEach((p, idx) => {
-                let badgeColor = "bg-slate-100 text-slate-600 border-slate-200";
-                let textoEstado = `Parada #${idx + 1}`;
-                if (p.estado === "completado") {
-                    badgeColor = "bg-emerald-100 text-emerald-700 border-emerald-200";
-                    textoEstado = "Completado ✓";
-                } else if (p.estado === "incidencia") {
-                    badgeColor = "bg-amber-100 text-amber-700 border-amber-200";
-                    textoEstado = "Ausente ⚠";
-                }
+            if (!target || !target.puntos || target.puntos.length === 0) {
+                html += `<div class="text-center py-4 text-slate-400 text-xs">No hay ruta asignada actualmente.</div>`;
+            } else {
+                html += `<div class="mb-1 mt-2"><span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider"><i class="fa-solid fa-route"></i> Ruta Asignada</span></div>`;
+                target.puntos.forEach((p, idx) => {
+                    let badgeColor = "bg-slate-100 text-slate-600 border-slate-200";
+                    let textoEstado = `Parada #${idx + 1}`;
+                    if (p.estado === "completado") {
+                        badgeColor = "bg-emerald-100 text-emerald-700 border-emerald-200";
+                        textoEstado = "Completado ✓";
+                    } else if (p.estado === "incidencia") {
+                        badgeColor = "bg-amber-100 text-amber-700 border-amber-200";
+                        textoEstado = "Ausente ⚠";
+                    }
 
-                let esPrimero = idx === 0;
-                let esUltimo = idx === target.puntos.length - 1;
-                let enlaceGoogleMaps = `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`;
+                    let esPrimero = idx === 0;
+                    let esUltimo = idx === target.puntos.length - 1;
+                    let enlaceGoogleMaps = `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`;
 
-                html += `
-                    <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-sm flex items-center justify-between text-xs gap-2">
-                        <div class="flex items-center gap-2">
-                            <div class="flex flex-col gap-0.5">
-                                <button onclick="moverParada('${target.id}', ${idx}, -1)" ${esPrimero ? 'disabled class="opacity-20 text-slate-400 cursor-not-allowed"' : 'class="bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 p-1 rounded transition text-[10px]"'} title="Subir parada">
-                                    <i class="fa-solid fa-chevron-up"></i>
-                                </button>
-                                <button onclick="moverParada('${target.id}', ${idx}, 1)" ${esUltimo ? 'disabled class="opacity-20 text-slate-400 cursor-not-allowed"' : 'class="bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 p-1 rounded transition text-[10px]"'} title="Bajar parada">
-                                    <i class="fa-solid fa-chevron-down"></i>
+                    html += `
+                        <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-sm flex items-center justify-between text-xs gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <div class="flex flex-col gap-0.5">
+                                    <button onclick="moverParada('${target.id}', ${idx}, -1)" ${esPrimero ? 'disabled class="opacity-20 text-slate-400 cursor-not-allowed"' : 'class="bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 p-1 rounded transition text-[10px]"'} title="Subir parada">
+                                        <i class="fa-solid fa-chevron-up"></i>
+                                    </button>
+                                    <button onclick="moverParada('${target.id}', ${idx}, 1)" ${esUltimo ? 'disabled class="opacity-20 text-slate-400 cursor-not-allowed"' : 'class="bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 p-1 rounded transition text-[10px]"'} title="Bajar parada">
+                                        <i class="fa-solid fa-chevron-down"></i>
+                                    </button>
+                                </div>
+                                <div>
+                                    <span class="font-bold block text-slate-800">${idx + 1}. ${p.cliente}</span>
+                                    <span class="text-[10px] font-mono text-slate-500">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="px-2 py-1 rounded-lg border font-semibold text-[10px] ${badgeColor}">${textoEstado}</span>
+                                
+                                <a href="${enlaceGoogleMaps}" target="_blank" class="bg-blue-50 hover:bg-blue-100 text-blue-600 p-1.5 rounded-lg transition text-xs border border-blue-200" title="Ver en Google Maps">
+                                    <i class="fa-solid fa-map-location-dot"></i>
+                                </a>
+
+                                ${rolActual === "asesor" && p.estado !== "completado" && p.estado !== "incidencia" ? `
+                                    <button onclick="abrirModalVisita(${idx})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1.5 rounded-lg text-xs transition shadow" title="Tomar hasta 4 fotos y registrar visita">
+                                        <i class="fa-solid fa-camera"></i>
+                                    </button>
+                                ` : ""}
+
+                                <button onclick="eliminarParadaIndividual('${target.id}', ${idx})" class="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-lg transition text-xs border border-red-200" title="Eliminar parada">
+                                    <i class="fa-solid fa-trash-can"></i>
                                 </button>
                             </div>
-                            <div>
-                                <span class="font-bold block text-slate-800">${idx + 1}. ${p.cliente}</span>
-                                <span class="text-[10px] font-mono text-slate-500">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span>
-                            </div>
                         </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="px-2 py-1 rounded-lg border font-semibold text-[10px] ${badgeColor}">${textoEstado}</span>
-                            
-                            <a href="${enlaceGoogleMaps}" target="_blank" class="bg-blue-50 hover:bg-blue-100 text-blue-600 p-1.5 rounded-lg transition text-xs border border-blue-200" title="Ver en Google Maps">
-                                <i class="fa-solid fa-map-location-dot"></i>
-                            </a>
-
-                            ${rolActual === "asesor" && p.estado !== "completado" && p.estado !== "incidencia" ? `
-                                <button onclick="abrirModalVisita(${idx})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1.5 rounded-lg text-xs transition shadow" title="Tomar hasta 4 fotos y registrar visita">
-                                    <i class="fa-solid fa-camera"></i>
-                                </button>
-                            ` : ""}
-
-                            <button onclick="eliminarParadaIndividual('${target.id}', ${idx})" class="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-lg transition text-xs border border-red-200" title="Eliminar parada">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
+                    `;
+                });
+            }
             contenedor.innerHTML = html;
         }
 
+        // --- SISTEMA GPS ROBUSTO EN SEGUNDO PLANO Y PANTALLA BLOQUEADA ---
         async function activarGPSReal() {
             if (rolActual !== "asesor") return;
             const btn = document.getElementById("btn-gps-toggle");
@@ -842,7 +938,7 @@
                 if (gpsIntervalLoop) clearInterval(gpsIntervalLoop);
                 gpsIntervalLoop = setInterval(() => {
                     navigator.geolocation.getCurrentPosition(procesarNuevaCoordenadaGPS, errorGPSHandler, opcionesGPS);
-                }, 4000);
+                }, 3000);
             }
         }
 
@@ -906,6 +1002,7 @@
             return R * c;
         }
 
+        // --- GESTIÓN VISITA RUTINARIA ---
         function abrirModalVisita(index) {
             paradasVisitandoIndex = index;
             document.getElementById("input-fotos").value = "";
@@ -1007,12 +1104,115 @@
             alert("Se marcó la incidencia por ausencia.");
         }
 
+        // --- GESTIÓN VISITA EMERGENTE ---
+        function abrirModalVisitaEmergente() {
+            if (!usuarioActual.lat || !usuarioActual.lng) {
+                alert("⚠️ Esperando señal GPS actual para ubicar la visita emergente...");
+                return;
+            }
+            document.getElementById("input-emergente-nombre").value = "";
+            document.getElementById("input-fotos-emergente").value = "";
+            document.getElementById("input-emergente-avance").value = "";
+            fotosEmergentesActuales = [];
+            document.getElementById("grid-preview-emergente").innerHTML = `
+                <div class="col-span-2 py-6 text-center text-slate-400 text-xs">
+                    <i class="fa-solid fa-images text-2xl mb-1 text-slate-300"></i>
+                    <p>No hay fotos seleccionadas (0/4)</p>
+                </div>
+            `;
+            document.getElementById("modal-emergente").classList.remove("hidden");
+        }
+
+        function cerrarModalEmergente() {
+            document.getElementById("modal-emergente").classList.add("hidden");
+        }
+
+        function procesarMultiplesFotosEmergentes(event) {
+            let files = Array.from(event.target.files);
+            if (files.length === 0) return;
+
+            if (files.length > 4) {
+                alert("⚠️ Solo puedes seleccionar un máximo de 4 fotografías.");
+                event.target.value = "";
+                return;
+            }
+
+            fotosEmergentesActuales = [];
+            const previewContainer = document.getElementById("grid-preview-emergente");
+            previewContainer.innerHTML = "";
+
+            files.forEach((file, index) => {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    let img = new Image();
+                    img.onload = function() {
+                        let canvas = document.createElement("canvas");
+                        let ctx = canvas.getContext("2d");
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+
+                        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                        ctx.fillRect(10, canvas.height - 60, canvas.width - 20, 45);
+                        ctx.fillStyle = "#ffffff";
+                        ctx.font = "bold 20px monospace";
+                        ctx.fillText(`GPS STAMP: ${usuarioActual.lat.toFixed(5)}, ${usuarioActual.lng.toFixed(5)}`, 20, canvas.height - 32);
+                        ctx.fillText(`FECHA: ${new Date().toLocaleString()}`, 20, canvas.height - 12);
+
+                        let dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+                        fotosEmergentesActuales.push(dataUrl);
+
+                        previewContainer.innerHTML += `
+                            <div class="relative border rounded-lg overflow-hidden shadow-sm bg-white">
+                                <span class="absolute top-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">#${index + 1}</span>
+                                <img src="${dataUrl}" class="w-full h-24 object-cover">
+                            </div>
+                        `;
+                    }
+                    img.src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function guardarVisitaEmergenteReal() {
+            let nombreCliente = document.getElementById("input-emergente-nombre").value.trim();
+            let avance = document.getElementById("input-emergente-avance").value.trim();
+
+            if (!nombreCliente) {
+                alert("⚠️ Ingrese el nombre del cliente o motivo de la emergencia.");
+                return;
+            }
+            if (fotosEmergentesActuales.length === 0) {
+                alert("⚠️ Debe adjuntar al menos una fotografía para registrar la visita emergente.");
+                return;
+            }
+
+            if (!usuarioActual.emergentes) usuarioActual.emergentes = [];
+            usuarioActual.emergentes.push({
+                lat: usuarioActual.lat,
+                lng: usuarioActual.lng,
+                cliente: nombreCliente,
+                avance: avance || "Visita emergente fuera de ruta",
+                fotos: fotosEmergentesActuales,
+                fecha: new Date().toLocaleString()
+            });
+
+            asesoresDB[usuarioActual.id] = usuarioActual;
+            await guardarEnSupabase();
+            cerrarModalEmergente();
+            renderizarListaParadas();
+            actualizarDibujoRutaMapa();
+            alert("⚡ ¡Visita emergente registrada y sincronizada con éxito!");
+        }
+
         function abrirModalEvidencias() {
             const grid = document.getElementById("contenedor-grid-evidencias");
             let html = "";
 
             Object.keys(asesoresDB).forEach(pin => {
                 let usr = asesoresDB[pin];
+                // Puntos normales completados o incidencia
                 if (usr.puntos) {
                     usr.puntos.forEach((p, idx) => {
                         if (p.estado === "completado" || p.estado === "incidencia") {
@@ -1040,6 +1240,31 @@
                         }
                     });
                 }
+
+                // Visitas Emergentes
+                if (usr.emergentes) {
+                    usr.emergentes.forEach((em, eIdx) => {
+                        let fotosHtml = "";
+                        if (em.fotos && em.fotos.length > 0) {
+                            fotosHtml = `<div class="grid grid-cols-2 gap-2 mt-2">`;
+                            em.fotos.forEach((fotoUrl, fIdx) => {
+                                fotosHtml += `<img src="${fotoUrl}" class="w-full h-32 object-cover rounded-lg border shadow-inner" alt="Emergente ${fIdx + 1}">`;
+                            });
+                            fotosHtml += `</div>`;
+                        }
+
+                        html += `
+                            <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-4 space-y-2 shadow-sm">
+                                <div class="flex justify-between items-center text-xs font-bold text-blue-900">
+                                    <span>${usr.nombre} — ⚡ EMERGENTE: ${em.cliente}</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] bg-blue-600 text-white">${em.fecha}</span>
+                                </div>
+                                <p class="text-xs text-slate-700">${em.avance}</p>
+                                ${fotosHtml}
+                            </div>
+                        `;
+                    });
+                }
             });
 
             grid.innerHTML = html || `<div class="text-center col-span-2 py-10 text-slate-400 text-xs">No hay registros en la bitácora aún.</div>`;
@@ -1048,25 +1273,6 @@
 
         function cerrarModalEvidencias() {
             document.getElementById("modal-evidencias").classList.add("hidden");
-        }
-
-        function exportarReporteExcel() {
-            let csvContent = "data:text/csv;charset=utf-8,Asesor,Cliente,Estado,Avance\n";
-            Object.keys(asesoresDB).forEach(pin => {
-                let usr = asesoresDB[pin];
-                if (usr.puntos) {
-                    usr.puntos.forEach(p => {
-                        csvContent += `"${usr.nombre}","${p.cliente}","${p.estado || 'pendiente'}","${p.avance || ''}"\n`;
-                    });
-                }
-            });
-            let encodedUri = encodeURI(csvContent);
-            let link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "reporte_rutas_mano_amiga.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
         }
     </script>
 </body>
