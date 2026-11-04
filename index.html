@@ -132,15 +132,16 @@
                     </div>
 
                     <div>
-                        <textarea id="input-coordenadas" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none font-mono bg-slate-50" placeholder="15.0350, -91.1500&#10;15.0400, -91.1600"></textarea>
+                        <p class="text-[11px] text-slate-500 mb-1">Formato: <code>Lat, Lng, Nombre del Cliente</code></p>
+                        <textarea id="input-coordenadas" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none font-mono bg-slate-50" placeholder="14.9625, -91.1862&#10;14.9606, -91.1806, José Salvador&#10;14.9620, -91.1820"></textarea>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="optimizarYGuardarRuta()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md">
+                        <button onclick="optimizarYGuardarRuta()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-md">
                             <i class="fa-solid fa-plus-circle"></i> Asignar Ruta
                         </button>
-                        <button onclick="exportarReporteExcel()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md">
-                            <i class="fa-solid fa-file-excel"></i> Exportar CSV
+                        <button onclick="limpiarRutaCompleta()" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-md">
+                            <i class="fa-solid fa-trash-can"></i> Limpiar Ruta
                         </button>
                     </div>
 
@@ -193,22 +194,21 @@
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-3">
                 <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-camera-retro text-emerald-600"></i> Captura de Evidencia
+                    <i class="fa-solid fa-camera-retro text-emerald-600"></i> Captura de Evidencias (Máx. 4 Fotos)
                 </h3>
                 <button onclick="cerrarModalVisita()" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Fotografía Obligatoria con GPS Stamp</label>
-                    <input type="file" id="input-foto" accept="image/*" capture="environment" onchange="procesarFotoConGPSReal(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 border border-slate-200 rounded-xl p-2">
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Seleccionar o Tomar Fotografías (Hasta 4)</label>
+                    <input type="file" id="input-fotos" accept="image/*" multiple onchange="procesarMultiplesFotos(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 border border-slate-200 rounded-xl p-2">
                 </div>
 
-                <div class="relative border-2 border-dashed border-slate-300 rounded-xl p-2 text-center bg-slate-50">
-                    <canvas id="canvas-preview" class="max-h-56 mx-auto rounded-lg hidden shadow-md"></canvas>
-                    <div id="placeholder-foto" class="py-8 text-slate-400 text-xs">
-                        <i class="fa-solid fa-image text-3xl mb-2 text-slate-300"></i>
-                        <p>Tome la fotografía. Se sincronizará al instante en Supabase.</p>
+                <div id="grid-preview-fotos" class="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-xl border border-dashed border-slate-300">
+                    <div class="col-span-2 py-6 text-center text-slate-400 text-xs">
+                        <i class="fa-solid fa-images text-2xl mb-1 text-slate-300"></i>
+                        <p>No hay fotos seleccionadas (0/4)</p>
                     </div>
                 </div>
 
@@ -252,7 +252,6 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN CONEXIÓN NUBE SUPABASE
         const SUPABASE_URL = "https://lcqztstpefwlwrmkerau.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_YOLr5vJUSRUE13Ud403_RA_xmuR9FJQ";
 
@@ -269,9 +268,10 @@
         let polylinesAsesores = [];
         let watchId = null;
         let wakeLock = null;
-        let audioInvisbleInterval = null;
+        let gpsIntervalLoop = null;
+        let audioKeepAliveInterval = null;
         let paradasVisitandoIndex = null;
-        let fotoDataUrlActual = "";
+        let fotosDataUrlsActuales = [];
 
         const COLORES_ASESORES = ["#2563eb", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4"];
 
@@ -381,7 +381,8 @@
         function cerrarSesion() {
             if (watchId) navigator.geolocation.clearWatch(watchId);
             if (wakeLock) wakeLock.release().catch(() => {});
-            if (audioInvisbleInterval) clearInterval(audioInvisbleInterval);
+            if (gpsIntervalLoop) clearInterval(gpsIntervalLoop);
+            if (audioKeepAliveInterval) clearInterval(audioKeepAliveInterval);
             document.getElementById("app-container").classList.add("hidden");
             document.getElementById("login-screen").classList.remove("hidden");
             document.getElementById("login-pass").value = "";
@@ -513,7 +514,7 @@
                         });
                         
                         let marker = L.marker([p.lat, p.lng], { icon: pinIcon }).addTo(map);
-                        marker.bindPopup(`<b>${usr.nombre}</b><br>${p.cliente}<br>Estado: ${p.estado}`);
+                        marker.bindPopup(`<b>${idx + 1}. ${p.cliente}</b><br><a href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}" target="_blank" style="color:blue;text-decoration:underline;">Abrir en Google Maps</a>`);
                         polylinesAsesores.push(marker);
                     });
 
@@ -599,17 +600,22 @@
             let lineas = textoCoords.split("\n");
             let nuevosPuntos = [];
             lineas.forEach((linea, idx) => {
-                let partes = linea.split(",");
+                let lineaLimpia = linea.trim();
+                if (!lineaLimpia) return;
+
+                let partes = lineaLimpia.split(/[,–-]/);
                 if (partes.length >= 2) {
                     let lat = parseFloat(partes[0].trim());
                     let lng = parseFloat(partes[1].trim());
+                    let nombreCliente = (partes.length >= 3 && partes[2].trim() !== "") ? partes.slice(2).join(" - ").trim() : `Cliente Destino #${idx + 1}`;
+
                     if (!isNaN(lat) && !isNaN(lng)) {
                         nuevosPuntos.push({
                             lat: lat,
                             lng: lng,
-                            cliente: `Cliente Destino #${idx + 1}`,
+                            cliente: nombreCliente,
                             estado: "pendiente",
-                            foto: "",
+                            fotos: [],
                             avance: ""
                         });
                     }
@@ -626,8 +632,76 @@
             asesoresDB[targetPin].cerrado = false;
 
             await guardarEnSupabase();
-            alert(`¡Ruta asignada correctamente al asesor ${asesoresDB[targetPin].nombre}!`);
+            alert(`¡Ruta asignada correctamente a ${asesoresDB[targetPin].nombre}!`);
             document.getElementById("input-coordenadas").value = "";
+            renderizarListaParadas();
+            actualizarDibujoRutaMapa();
+        }
+
+        async function eliminarParadaIndividual(pinAsesor, indexEliminar) {
+            let usr = asesoresDB[pinAsesor];
+            if (!usr || !usr.puntos) return;
+
+            if (!confirm(`¿Desea eliminar la parada #${indexEliminar + 1} (${usr.puntos[indexEliminar].cliente})?`)) {
+                return;
+            }
+
+            usr.puntos.splice(indexEliminar, 1);
+            usr.paradaActiva = recalcularParadaActiva(usr);
+            asesoresDB[pinAsesor] = usr;
+
+            await guardarEnSupabase();
+            renderizarListaParadas();
+            actualizarDibujoRutaMapa();
+        }
+
+        async function limpiarRutaCompleta() {
+            let targetPin = null;
+            if (rolActual === "admin") {
+                if (vistaAdminSeleccionada === "todos") {
+                    let seleccion = prompt("Ingrese el PIN del Asesor al cual desea BORRAR la ruta completa:", "1346");
+                    if (!seleccion || !asesoresDB[seleccion]) {
+                        alert("PIN inválido o cancelado.");
+                        return;
+                    }
+                    targetPin = seleccion;
+                } else {
+                    targetPin = vistaAdminSeleccionada;
+                }
+            } else {
+                targetPin = usuarioActual.id;
+            }
+
+            let usr = asesoresDB[targetPin];
+            if (!usr) return;
+
+            if (confirm(`¿Está seguro de que desea ELIMINAR TODA LA RUTA asignada a ${usr.nombre}?`)) {
+                usr.puntos = [];
+                usr.paradaActiva = 0;
+                asesoresDB[targetPin] = usr;
+
+                await guardarEnSupabase();
+                alert(`La ruta de ${usr.nombre} ha sido eliminada por completo.`);
+                renderizarListaParadas();
+                actualizarDibujoRutaMapa();
+            }
+        }
+
+        async function moverParada(pinAsesor, indexActual, direccion) {
+            let usr = asesoresDB[pinAsesor];
+            if (!usr || !usr.puntos) return;
+
+            let nuevoIndex = indexActual + direccion;
+            if (nuevoIndex < 0 || nuevoIndex >= usr.puntos.length) return;
+
+            let temp = usr.puntos[indexActual];
+            usr.puntos[indexActual] = usr.puntos[nuevoIndex];
+            usr.puntos[nuevoIndex] = temp;
+
+            usr.paradaActiva = recalcularParadaActiva(usr);
+            asesoresDB[pinAsesor] = usr;
+
+            await guardarEnSupabase();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
         }
@@ -689,19 +763,42 @@
                     textoEstado = "Ausente ⚠";
                 }
 
+                let esPrimero = idx === 0;
+                let esUltimo = idx === target.puntos.length - 1;
+                let enlaceGoogleMaps = `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`;
+
                 html += `
-                    <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-sm flex items-center justify-between text-xs">
-                        <div>
-                            <span class="font-bold block text-slate-800">${p.cliente}</span>
-                            <span class="text-[10px] font-mono text-slate-500">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span>
-                        </div>
+                    <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-sm flex items-center justify-between text-xs gap-2">
                         <div class="flex items-center gap-2">
-                            <span class="px-2.5 py-1 rounded-lg border font-semibold text-[10px] ${badgeColor}">${textoEstado}</span>
+                            <div class="flex flex-col gap-0.5">
+                                <button onclick="moverParada('${target.id}', ${idx}, -1)" ${esPrimero ? 'disabled class="opacity-20 text-slate-400 cursor-not-allowed"' : 'class="bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 p-1 rounded transition text-[10px]"'} title="Subir parada">
+                                    <i class="fa-solid fa-chevron-up"></i>
+                                </button>
+                                <button onclick="moverParada('${target.id}', ${idx}, 1)" ${esUltimo ? 'disabled class="opacity-20 text-slate-400 cursor-not-allowed"' : 'class="bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 p-1 rounded transition text-[10px]"'} title="Bajar parada">
+                                    <i class="fa-solid fa-chevron-down"></i>
+                                </button>
+                            </div>
+                            <div>
+                                <span class="font-bold block text-slate-800">${idx + 1}. ${p.cliente}</span>
+                                <span class="text-[10px] font-mono text-slate-500">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="px-2 py-1 rounded-lg border font-semibold text-[10px] ${badgeColor}">${textoEstado}</span>
+                            
+                            <a href="${enlaceGoogleMaps}" target="_blank" class="bg-blue-50 hover:bg-blue-100 text-blue-600 p-1.5 rounded-lg transition text-xs border border-blue-200" title="Ver en Google Maps">
+                                <i class="fa-solid fa-map-location-dot"></i>
+                            </a>
+
                             ${rolActual === "asesor" && p.estado !== "completado" && p.estado !== "incidencia" ? `
-                                <button onclick="abrirModalVisita(${idx})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-xs transition shadow">
-                                    <i class="fa-solid fa-camera"></i> Visitar
+                                <button onclick="abrirModalVisita(${idx})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1.5 rounded-lg text-xs transition shadow" title="Tomar hasta 4 fotos y registrar visita">
+                                    <i class="fa-solid fa-camera"></i>
                                 </button>
                             ` : ""}
+
+                            <button onclick="eliminarParadaIndividual('${target.id}', ${idx})" class="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-lg transition text-xs border border-red-200" title="Eliminar parada">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
                         </div>
                     </div>
                 `;
@@ -715,69 +812,76 @@
             btn.innerHTML = `<i class="fa-solid fa-satellite-dish fa-bounce"></i> GPS Activo (Fondo)`;
             btn.className = "bg-blue-600 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow animate-pulse";
 
-            // 1. Evitar suspensión de pantalla
             try {
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
                 }
             } catch (err) {}
 
-            // 2. Truco de Audio Silencioso para evitar que el celular con pantalla bloqueada suspenda el GPS
             try {
                 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioInvisbleInterval) clearInterval(audioInvisbleInterval);
-                audioInvisbleInterval = setInterval(() => {
+                if (audioKeepAliveInterval) clearInterval(audioKeepAliveInterval);
+                audioKeepAliveInterval = setInterval(() => {
                     if (audioCtx.state === 'suspended') audioCtx.resume();
-                    let oscillator = audioCtx.createOscillator();
-                    let gainNode = audioCtx.createGain();
-                    gainNode.gain.value = 0.001; // Casi imperceptible pero mantiene vivo el proceso de audio del sistema
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioCtx.destination);
-                    oscillator.start();
-                    oscillator.stop(audioCtx.currentTime + 0.1);
-                }, 15000);
+                    let osc = audioCtx.createOscillator();
+                    let gain = audioCtx.createGain();
+                    gain.gain.value = 0.0001;
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.05);
+                }, 10000);
             } catch (e) {}
 
             if ("geolocation" in navigator) {
-                const opcionesGPS = { enableHighAccuracy: true, maximumAge: 0, timeout: 27000 };
+                const opcionesGPS = { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 };
 
-                watchId = navigator.geolocation.watchPosition(position => {
-                    let lat = position.coords.latitude;
-                    let lng = position.coords.longitude;
-                    let speed = position.coords.speed ? (position.coords.speed * 3.6).toFixed(1) : "0.0";
+                if (watchId) navigator.geolocation.clearWatch(watchId);
+                watchId = navigator.geolocation.watchPosition(procesarNuevaCoordenadaGPS, errorGPSHandler, opcionesGPS);
 
-                    document.getElementById("waze-speed").innerText = speed;
-                    
-                    usuarioActual.lat = lat;
-                    usuarioActual.lng = lng;
-                    usuarioActual.ultimaHoraGps = new Date().toLocaleTimeString();
-
-                    if (!usuarioActual.historial) usuarioActual.historial = [];
-                    let ultimoPunto = usuarioActual.historial[usuarioActual.historial.length - 1];
-                    if (!ultimoPunto || ultimoPunto[0] !== lat || ultimoPunto[1] !== lng) {
-                        usuarioActual.historial.push([lat, lng]);
-                    }
-
-                    if (usuarioActual.puntos && usuarioActual.puntos.length > 0) {
-                        let idxActivo = recalcularParadaActiva(usuarioActual);
-                        if (idxActivo < usuarioActual.puntos.length) {
-                            let pDestino = usuarioActual.puntos[idxActivo];
-                            let distMeters = calcularDistanciaMetros(lat, lng, pDestino.lat, pDestino.lng);
-                            document.getElementById("waze-distance").innerText = Math.round(distMeters);
-                        } else {
-                            document.getElementById("waze-distance").innerText = "0";
-                        }
-                    }
-
-                    asesoresDB[usuarioActual.id] = usuarioActual;
-                    guardarEnSupabase();
-                    actualizarDibujoRutaMapa();
-                    actualizarPanelTelemetria();
-
-                }, error => {
-                    console.warn("Reintentando señal GPS...", error);
-                }, opcionesGPS);
+                if (gpsIntervalLoop) clearInterval(gpsIntervalLoop);
+                gpsIntervalLoop = setInterval(() => {
+                    navigator.geolocation.getCurrentPosition(procesarNuevaCoordenadaGPS, errorGPSHandler, opcionesGPS);
+                }, 4000);
             }
+        }
+
+        function procesarNuevaCoordenadaGPS(position) {
+            let lat = position.coords.latitude;
+            let lng = position.coords.longitude;
+            let speed = position.coords.speed ? (position.coords.speed * 3.6).toFixed(1) : "0.0";
+
+            document.getElementById("waze-speed").innerText = speed;
+            
+            usuarioActual.lat = lat;
+            usuarioActual.lng = lng;
+            usuarioActual.ultimaHoraGps = new Date().toLocaleTimeString();
+
+            if (!usuarioActual.historial) usuarioActual.historial = [];
+            let ultimoPunto = usuarioActual.historial[usuarioActual.historial.length - 1];
+            if (!ultimoPunto || ultimoPunto[0] !== lat || ultimoPunto[1] !== lng) {
+                usuarioActual.historial.push([lat, lng]);
+            }
+
+            if (usuarioActual.puntos && usuarioActual.puntos.length > 0) {
+                let idxActivo = recalcularParadaActiva(usuarioActual);
+                if (idxActivo < usuarioActual.puntos.length) {
+                    let pDestino = usuarioActual.puntos[idxActivo];
+                    let distMeters = calcularDistanciaMetros(lat, lng, pDestino.lat, pDestino.lng);
+                    document.getElementById("waze-distance").innerText = Math.round(distMeters);
+                } else {
+                    document.getElementById("waze-distance").innerText = "0";
+                }
+            }
+
+            asesoresDB[usuarioActual.id] = usuarioActual;
+            guardarEnSupabase();
+            actualizarDibujoRutaMapa();
+            actualizarPanelTelemetria();
+        }
+
+        function errorGPSHandler(error) {
+            console.warn("Reintentando señal de GPS...", error);
         }
 
         document.addEventListener("visibilitychange", async function() {
@@ -804,11 +908,15 @@
 
         function abrirModalVisita(index) {
             paradasVisitandoIndex = index;
-            document.getElementById("input-foto").value = "";
+            document.getElementById("input-fotos").value = "";
             document.getElementById("input-avance").value = "";
-            document.getElementById("canvas-preview").classList.add("hidden");
-            document.getElementById("placeholder-foto").classList.remove("hidden");
-            fotoDataUrlActual = "";
+            fotosDataUrlsActuales = [];
+            document.getElementById("grid-preview-fotos").innerHTML = `
+                <div class="col-span-2 py-6 text-center text-slate-400 text-xs">
+                    <i class="fa-solid fa-images text-2xl mb-1 text-slate-300"></i>
+                    <p>No hay fotos seleccionadas (0/4)</p>
+                </div>
+            `;
             document.getElementById("modal-visita").classList.remove("hidden");
         }
 
@@ -816,42 +924,65 @@
             document.getElementById("modal-visita").classList.add("hidden");
         }
 
-        function procesarFotoConGPSReal(event) {
-            let file = event.target.files[0];
-            if (!file) return;
+        function procesarMultiplesFotos(event) {
+            let files = Array.from(event.target.files);
+            if (files.length === 0) return;
 
-            let reader = new FileReader();
-            reader.onload = function(e) {
-                let img = new Image();
-                img.onload = function() {
-                    let canvas = document.getElementById("canvas-preview");
-                    let ctx = canvas.getContext("2d");
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
-
-                    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-                    ctx.fillRect(10, canvas.height - 60, canvas.width - 20, 45);
-                    ctx.fillStyle = "#ffffff";
-                    ctx.font = "bold 20px monospace";
-                    ctx.fillText(`GPS STAMP: ${usuarioActual.lat ? usuarioActual.lat.toFixed(5) : 0}, ${usuarioActual.lng ? usuarioActual.lng.toFixed(5) : 0}`, 20, canvas.height - 32);
-                    ctx.fillText(`FECHA: ${new Date().toLocaleString()}`, 20, canvas.height - 12);
-
-                    fotoDataUrlActual = canvas.toDataURL("image/jpeg", 0.8);
-                    canvas.classList.remove("hidden");
-                    document.getElementById("placeholder-foto").classList.add("hidden");
-                }
-                img.src = e.target.result;
+            if (files.length > 4) {
+                alert("⚠️ Solo puedes seleccionar un máximo de 4 fotografías por registro.");
+                event.target.value = "";
+                return;
             }
-            reader.readAsDataURL(file);
+
+            fotosDataUrlsActuales = [];
+            const previewContainer = document.getElementById("grid-preview-fotos");
+            previewContainer.innerHTML = "";
+
+            files.forEach((file, index) => {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    let img = new Image();
+                    img.onload = function() {
+                        let canvas = document.createElement("canvas");
+                        let ctx = canvas.getContext("2d");
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+
+                        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                        ctx.fillRect(10, canvas.height - 60, canvas.width - 20, 45);
+                        ctx.fillStyle = "#ffffff";
+                        ctx.font = "bold 20px monospace";
+                        ctx.fillText(`GPS STAMP: ${usuarioActual.lat ? usuarioActual.lat.toFixed(5) : 0}, ${usuarioActual.lng ? usuarioActual.lng.toFixed(5) : 0}`, 20, canvas.height - 32);
+                        ctx.fillText(`FECHA: ${new Date().toLocaleString()}`, 20, canvas.height - 12);
+
+                        let dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+                        fotosDataUrlsActuales.push(dataUrl);
+
+                        previewContainer.innerHTML += `
+                            <div class="relative border rounded-lg overflow-hidden shadow-sm bg-white">
+                                <span class="absolute top-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">#${index + 1}</span>
+                                <img src="${dataUrl}" class="w-full h-24 object-cover">
+                            </div>
+                        `;
+                    }
+                    img.src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            });
         }
 
         async function guardarVisitaExitosa() {
             if (paradasVisitandoIndex === null) return;
+            if (fotosDataUrlsActuales.length === 0) {
+                alert("⚠️ Debe adjuntar al menos una fotografía para registrar la visita.");
+                return;
+            }
+
             let avance = document.getElementById("input-avance").value.trim();
 
             usuarioActual.puntos[paradasVisitandoIndex].estado = "completado";
-            usuarioActual.puntos[paradasVisitandoIndex].foto = fotoDataUrlActual;
+            usuarioActual.puntos[paradasVisitandoIndex].fotos = fotosDataUrlsActuales;
             usuarioActual.puntos[paradasVisitandoIndex].avance = avance || "Visita completada con éxito";
 
             asesoresDB[usuarioActual.id] = usuarioActual;
@@ -859,12 +990,13 @@
             cerrarModalVisita();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            alert("¡Visita registrada correctamente en Supabase!");
+            alert("¡Visita y evidencias registradas correctamente en Supabase!");
         }
 
         async function marcarIncidenciaAusente() {
             if (paradasVisitandoIndex === null) return;
             usuarioActual.puntos[paradasVisitandoIndex].estado = "incidencia";
+            usuarioActual.puntos[paradasVisitandoIndex].fotos = [];
             usuarioActual.puntos[paradasVisitandoIndex].avance = "Cliente ausente / Sin respuesta";
 
             asesoresDB[usuarioActual.id] = usuarioActual;
@@ -884,6 +1016,17 @@
                 if (usr.puntos) {
                     usr.puntos.forEach((p, idx) => {
                         if (p.estado === "completado" || p.estado === "incidencia") {
+                            let fotosHtml = "";
+                            if (p.fotos && p.fotos.length > 0) {
+                                fotosHtml = `<div class="grid grid-cols-2 gap-2 mt-2">`;
+                                p.fotos.forEach((fotoUrl, fIdx) => {
+                                    fotosHtml += `<img src="${fotoUrl}" class="w-full h-32 object-cover rounded-lg border shadow-inner" alt="Evidencia ${fIdx + 1}">`;
+                                });
+                                fotosHtml += `</div>`;
+                            } else {
+                                fotosHtml = `<div class="text-xs text-slate-400 italic mt-2">Sin fotografías registradas</div>`;
+                            }
+
                             html += `
                                 <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2 shadow-sm">
                                     <div class="flex justify-between items-center text-xs font-bold text-slate-700">
@@ -891,7 +1034,7 @@
                                         <span class="px-2 py-0.5 rounded text-[10px] ${p.estado === 'completado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${p.estado.toUpperCase()}</span>
                                     </div>
                                     <p class="text-xs text-slate-600">${p.avance || 'Sin observaciones'}</p>
-                                    ${p.foto ? `<img src="${p.foto}" class="w-full h-40 object-cover rounded-lg border shadow-inner">` : '<div class="text-xs text-slate-400 italic">Sin fotografía registrada</div>'}
+                                    ${fotosHtml}
                                 </div>
                             `;
                         }
