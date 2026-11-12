@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mano Amiga - GPS con Fotos y Motos</title>
+    <title>Mano Amiga - Sistema Completo</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Leaflet CSS -->
@@ -17,7 +17,7 @@
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased">
 
-    <!-- LOGIN -->
+    <!-- LOGIN CON SELECTOR DE ROL Y CUENTA -->
     <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border">
             <div class="text-center mb-6">
@@ -29,9 +29,17 @@
             </div>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">PIN / Clave de Acceso</label>
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Seleccionar Usuario / Cuenta</label>
+                    <select id="login-cuenta-select" class="w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 font-medium">
+                        <option value="1596">Administrador Central (1596)</option>
+                        <option value="4862">Gestor de Cartera (4862)</option>
+                        <option value="1346">Asesor 1 (1346)</option>
+                        <option value="7946">Asesor 2 (7946)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">PIN / Contraseña</label>
                     <input type="password" id="login-pass" maxlength="6" placeholder="••••" class="w-full text-center text-xl tracking-widest px-3 py-2.5 rounded-xl border bg-slate-50 font-bold">
-                    <p class="text-[10px] text-slate-400 mt-1 text-center">Admin: 1596 | Asesor 1: 1346 | Asesor 2: 7946</p>
                 </div>
                 <button onclick="intentarLogin()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl shadow transition text-sm">
                     Iniciar Sesión
@@ -48,7 +56,7 @@
                 <h2 class="font-bold text-sm" id="header-title">Control Diario</h2>
             </div>
             <div class="flex items-center gap-2">
-                <button onclick="abrirModalEvidencias()" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">Bitácora</button>
+                <button onclick="abrirModalEvidencias()" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow">Bitácora</button>
                 <span id="user-badge" class="bg-slate-800 text-emerald-400 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700"></span>
                 <button onclick="cerrarSesion()" class="bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg text-xs"><i class="fa-solid fa-power-off"></i></button>
             </div>
@@ -62,15 +70,22 @@
                     <select id="select-vista-asesor" onchange="cambiarVistaAdmin()" class="w-full text-xs p-2 rounded border bg-white font-medium">
                         <option value="todos">🌍 Ver Todos</option>
                     </select>
+                    <div id="admin-lock-box" class="pt-1">
+                        <button id="btn-toggle-cerrar" onclick="toggleCerrarEdicionRuta()" class="w-full bg-amber-600 text-white font-semibold py-1.5 rounded text-xs shadow">
+                            🔒 Cerrar Edición de Ruta
+                        </button>
+                    </div>
                 </div>
 
-                <div class="p-4 border-b space-y-3" id="admin-controls-box">
-                    <h3 class="font-bold text-xs uppercase text-slate-700"><i class="fa-solid fa-route text-emerald-600"></i> Asignar Coordenadas (Ruta)</h3>
+                <!-- PANEL PARA ASESOR (Colocar su ruta si no está cerrada) -->
+                <div class="p-4 border-b space-y-3" id="asesor-controls-box">
+                    <h3 class="font-bold text-xs uppercase text-slate-700"><i class="fa-solid fa-route text-emerald-600"></i> Colocar Mis Coordenadas (Ruta)</h3>
                     <textarea id="input-coordenadas" rows="3" class="w-full text-xs p-2 rounded border font-mono bg-slate-50" placeholder="14.9625, -91.1862, Cliente A&#10;14.9650, -91.1890, Cliente B"></textarea>
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="optimizarYGuardarRuta()" class="bg-emerald-600 text-white font-semibold py-2 rounded text-xs">Asignar Ruta</button>
-                        <button onclick="limpiarRutaCompleta()" class="bg-red-600 text-white font-semibold py-2 rounded text-xs">Limpiar Ruta</button>
+                        <button onclick="asesorGuardarRuta()" class="bg-emerald-600 text-white font-semibold py-2 rounded text-xs shadow">Guardar Mi Ruta</button>
+                        <button onclick="asesorLimpiarRuta()" class="bg-red-600 text-white font-semibold py-2 rounded text-xs shadow">Limpiar Ruta</button>
                     </div>
+                    <p id="lbl-estado-edicion" class="text-[10px] text-slate-500 font-semibold text-center"></p>
                 </div>
 
                 <div id="asesor-emergente-box" class="p-3 bg-emerald-50 border-b hidden">
@@ -153,10 +168,10 @@
         const COLORES_ASESORES = ["#2563eb", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4"];
 
         const baseInicial = {
-            "1596": { id: "1596", nombre: "Administrador Central", rol: "admin", color: "#1e293b", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] },
-            "4862": { id: "4862", nombre: "Gestor de Cartera", rol: "admin", color: "#0f172a", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] },
-            "1346": { id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, color: "#2563eb", lat: null, lng: null, historial: [], puntos: [], emergentes: [] },
-            "7946": { id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, color: "#10b981", lat: null, lng: null, historial: [], puntos: [], emergentes: [] }
+            "1596": { id: "1596", nombre: "Administrador Central", pin: "1596", rol: "admin", color: "#1e293b", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] },
+            "4862": { id: "4862", nombre: "Gestor de Cartera", pin: "4862", rol: "admin", color: "#0f172a", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] },
+            "1346": { id: "1346", nombre: "Asesor 1", pin: "1346", rol: "asesor", cerrado: false, color: "#2563eb", lat: null, lng: null, historial: [], puntos: [], emergentes: [] },
+            "7946": { id: "7946", nombre: "Asesor 2", pin: "7946", rol: "asesor", cerrado: false, color: "#10b981", lat: null, lng: null, historial: [], puntos: [], emergentes: [] }
         };
 
         let asesoresDB = baseInicial;
@@ -187,7 +202,11 @@
                 }
             } catch (e) { console.warn("Modo local activo"); }
             if (usuarioActual && asesoresDB[usuarioActual.id]) usuarioActual = asesoresDB[usuarioActual.id];
-            if (rolActual === "admin") poblarSelectVistaAdmin();
+            if (rolActual === "admin") {
+                poblarSelectVistaAdmin();
+                actualizarBotonCerrarEdicionUI();
+            }
+            renderizarPanelControlesSegunRol();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
         }
@@ -200,7 +219,11 @@
                     asesoresDB = payload.new.contenido;
                     limpiarDatosAntiguosDiarios();
                     if (usuarioActual && asesoresDB[usuarioActual.id]) usuarioActual = asesoresDB[usuarioActual.id];
-                    if (rolActual === "admin") poblarSelectVistaAdmin();
+                    if (rolActual === "admin") {
+                        poblarSelectVistaAdmin();
+                        actualizarBotonCerrarEdicionUI();
+                    }
+                    renderizarPanelControlesSegunRol();
                     renderizarListaParadas();
                     actualizarDibujoRutaMapa();
                 }
@@ -214,12 +237,15 @@
         }
 
         function intentarLogin() {
+            let cuentaSeleccionadaId = document.getElementById("login-cuenta-select").value;
             let pass = document.getElementById("login-pass").value.trim();
-            let cuenta = asesoresDB[pass] || baseInicial[pass];
-            if (!cuenta) { 
-                alert("PIN incorrecto. Usa: 1346 (Asesor) o 1596 (Admin)"); 
+            
+            let cuenta = asesoresDB[cuentaSeleccionadaId] || baseInicial[cuentaSeleccionadaId];
+            if (!cuenta || cuenta.pin !== pass) { 
+                alert("PIN incorrecto para la cuenta seleccionada."); 
                 return; 
             }
+
             rolActual = cuenta.rol;
             usuarioActual = cuenta;
             document.getElementById("login-screen").classList.add("hidden");
@@ -227,16 +253,8 @@
             
             document.getElementById("user-badge").innerText = `${cuenta.nombre} (${rolActual.toUpperCase()})`;
 
-            if (rolActual === "admin") {
-                document.getElementById("admin-controls-box").style.display = "block";
-                document.getElementById("admin-selector-box").style.display = "block";
-                poblarSelectVistaAdmin();
-            } else {
-                document.getElementById("admin-controls-box").style.display = "none";
-                document.getElementById("admin-selector-box").style.display = "none";
-                document.getElementById("asesor-emergente-box").style.display = "block";
-            }
-            
+            renderizarPanelControlesSegunRol();
+
             setTimeout(() => { 
                 inicializarMapaLeaflet(); 
                 renderizarListaParadas(); 
@@ -244,6 +262,29 @@
             }, 200);
 
             sincronizarDesdeSupabase();
+        }
+
+        function renderizarPanelControlesSegunRol() {
+            if (rolActual === "admin") {
+                document.getElementById("admin-selector-box").style.display = "block";
+                document.getElementById("asesor-controls-box").style.display = "none";
+                document.getElementById("asesor-emergente-box").style.display = "none";
+                poblarSelectVistaAdmin();
+                actualizarBotonCerrarEdicionUI();
+            } else {
+                document.getElementById("admin-selector-box").style.display = "none";
+                document.getElementById("asesor-controls-box").style.display = "block";
+                document.getElementById("asesor-emergente-box").style.display = "block";
+                
+                let asesorData = asesoresDB[usuarioActual.id];
+                if (asesorData && asesorData.cerrado) {
+                    document.getElementById("input-coordenadas").disabled = true;
+                    document.getElementById("lbl-estado-edicion").innerText = "🔒 Edición cerrada por el Gestor / Admin";
+                } else {
+                    document.getElementById("input-coordenadas").disabled = false;
+                    document.getElementById("lbl-estado-edicion").innerText = "✍ Puedes colocar y editar tu ruta";
+                }
+            }
         }
 
         function cerrarSesion() {
@@ -260,15 +301,47 @@
             Object.keys(asesoresDB).forEach(pin => {
                 let usr = asesoresDB[pin];
                 if (usr && usr.rol === "asesor") {
-                    select.innerHTML += `<option value="${pin}">${usr.nombre}</option>`;
+                    select.innerHTML += `<option value="${pin}">${usr.nombre} ${usr.cerrado ? '🔒' : '🔓'}</option>`;
                 }
             });
         }
 
         function cambiarVistaAdmin() {
             vistaAdminSeleccionada = document.getElementById("select-vista-asesor").value;
+            actualizarBotonCerrarEdicionUI();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
+        }
+
+        function actualizarBotonCerrarEdicionUI() {
+            if (rolActual !== "admin") return;
+            const btn = document.getElementById("btn-toggle-cerrar");
+            if (vistaAdminSeleccionada === "todos") {
+                btn.style.display = "none";
+                return;
+            }
+            btn.style.display = "block";
+            let asesorObj = asesoresDB[vistaAdminSeleccionada];
+            if (asesorObj && asesorObj.cerrado) {
+                btn.innerText = "🔓 Abrir Edición de Ruta";
+                btn.className = "w-full bg-emerald-600 text-white font-semibold py-1.5 rounded text-xs shadow";
+            } else {
+                btn.innerText = "🔒 Cerrar Edición de Ruta";
+                btn.className = "w-full bg-amber-600 text-white font-semibold py-1.5 rounded text-xs shadow";
+            }
+        }
+
+        async function toggleCerrarEdicionRuta() {
+            if (rolActual !== "admin" || vistaAdminSeleccionada === "todos") return;
+            let asesorObj = asesoresDB[vistaAdminSeleccionada];
+            if (!asesorObj) return;
+
+            asesorObj.cerrado = !asesorObj.cerrado;
+            asesoresDB[vistaAdminSeleccionada] = asesorObj;
+            await guardarEnSupabase();
+            poblarSelectVistaAdmin();
+            actualizarBotonCerrarEdicionUI();
+            alert(asesorObj.cerrado ? "Ruta cerrada correctamente para el asesor." : "Ruta abierta para edición.");
         }
 
         function inicializarMapaLeaflet() {
@@ -347,9 +420,11 @@
             }
         }
 
-        async function optimizarYGuardarRuta() {
-            let pin = rolActual === "admin" ? prompt("PIN del Asesor (ej. 1346):", "1346") : usuarioActual.id;
-            if (!pin || !asesoresDB[pin]) return;
+        async function asesorGuardarRuta() {
+            if (usuarioActual.cerrado) {
+                alert("El gestor ha cerrado la edición de tu ruta. No puedes modificarla.");
+                return;
+            }
             let txt = document.getElementById("input-coordenadas").value.trim();
             let pts = [];
             txt.split("\n").forEach((l, i) => {
@@ -357,19 +432,23 @@
                 if (p.length >= 2) pts.push({ lat: parseFloat(p[0]), lng: parseFloat(p[1]), cliente: p[2] ? p[2].trim() : `Cliente ${i+1}`, estado: "pendiente" });
             });
             if (pts.length === 0) { alert("Formato de coordenadas no válido"); return; }
-            asesoresDB[pin].puntos = pts;
+            usuarioActual.puntos = pts;
+            asesoresDB[usuarioActual.id] = usuarioActual;
             await guardarEnSupabase();
-            alert("Ruta asignada correctamente");
+            alert("Ruta guardada correctamente");
             document.getElementById("input-coordenadas").value = "";
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
         }
 
-        async function limpiarRutaCompleta() {
-            let pin = rolActual === "admin" ? prompt("PIN del Asesor a limpiar ruta:", "1346") : usuarioActual.id;
-            if (!pin || !asesoresDB[pin]) return;
-            if (confirm("¿Estás seguro de limpiar la ruta de este asesor?")) {
-                asesoresDB[pin].puntos = [];
+        async function asesorLimpiarRuta() {
+            if (usuarioActual.cerrado) {
+                alert("El gestor ha cerrado la edición de tu ruta. No puedes modificarla.");
+                return;
+            }
+            if (confirm("¿Estás seguro de limpiar tu ruta?")) {
+                usuarioActual.puntos = [];
+                asesoresDB[usuarioActual.id] = usuarioActual;
                 await guardarEnSupabase();
                 renderizarListaParadas();
                 actualizarDibujoRutaMapa();
