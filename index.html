@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Rastreo - Mano Amiga</title>
+    <title>Mano Amiga - Con Fotos Estables</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Leaflet CSS -->
@@ -12,316 +12,157 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <style>
-        @media print {
-            body * { visibility: hidden; }
-            #modal-evidencias, #modal-evidencias * { visibility: visible; }
-            #modal-evidencias { position: absolute; left: 0; top: 0; width: 100%; background: white !important; }
-            .no-print { display: none !important; }
-        }
-        .pulse-marker-active {
-            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-            animation: pulse-green 1.5s infinite;
-        }
-        @keyframes pulse-green {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-            70% { transform: scale(1.1); box-shadow: 0 0 0 14px rgba(16, 185, 129, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-        }
-    </style>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased">
 
-    <!-- PANTALLA DE LOGIN -->
-    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-95 p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-100">
-            <div class="text-center mb-8">
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-emerald-600 text-white rounded-2xl shadow-lg mb-4 text-2xl">
+    <!-- LOGIN -->
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-14 h-14 bg-emerald-600 text-white rounded-2xl shadow mb-3 text-xl">
                     <i class="fa-solid fa-shield-halved"></i>
                 </div>
-                <h1 class="text-2xl font-bold text-slate-900">Mano Amiga</h1>
-                <p class="text-sm text-slate-500 mt-1">Control y Rastreo Diario</p>
+                <h1 class="text-xl font-bold text-slate-900">Mano Amiga</h1>
+                <p class="text-xs text-slate-500">Control Diario con Evidencias</p>
             </div>
-
-            <div class="space-y-5">
+            <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Rol de Acceso</label>
-                    <select id="login-role" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50 font-medium text-sm">
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Rol</label>
+                    <select id="login-role" class="w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 font-medium">
                         <option value="asesor">Asesor de Campo (PIN)</option>
-                        <option value="admin">Administrador / Gestor (Clave)</option>
+                        <option value="admin">Administrador / Gestor</option>
                     </select>
                 </div>
-
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">PIN / Clave de Acceso</label>
-                    <input type="password" id="login-pass" maxlength="6" placeholder="••••" class="w-full text-center text-2xl tracking-widest px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50 font-bold">
+                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">PIN / Clave</label>
+                    <input type="password" id="login-pass" maxlength="6" placeholder="••••" class="w-full text-center text-xl tracking-widest px-3 py-2.5 rounded-xl border bg-slate-50 font-bold">
                 </div>
-
-                <button onclick="intentarLogin()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-emerald-500/30 transition flex items-center justify-center gap-2 text-sm">
-                    <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
+                <button onclick="intentarLogin()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl shadow transition text-sm">
+                    Iniciar Sesión
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- APLICACIÓN PRINCIPAL -->
+    <!-- APP CONTAINER -->
     <div id="app-container" class="min-h-screen flex flex-col hidden">
-        <header class="bg-slate-900 text-white shadow-md z-30 px-6 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="bg-emerald-600 p-2.5 rounded-xl shadow">
-                    <i class="fa-solid fa-satellite-dish text-xl animate-pulse"></i>
-                </div>
-                <div>
-                    <h2 class="font-bold text-lg leading-tight" id="header-title">Control de Flota</h2>
-                    <p class="text-xs text-slate-400">Agencia Central | En Vivo</p>
-                </div>
+        <header class="bg-slate-900 text-white px-4 py-3 flex justify-between items-center shadow">
+            <div class="flex items-center gap-2">
+                <div class="bg-emerald-600 p-2 rounded-lg"><i class="fa-solid fa-satellite-dish"></i></div>
+                <h2 class="font-bold text-sm" id="header-title">Control Diario</h2>
             </div>
-            <div class="flex items-center gap-3">
-                <span id="indicator-cloud" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs px-3 py-1.5 rounded-xl font-mono flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Sincronizado Nube
-                </span>
-                <button onclick="sincronizarDesdeSupabase()" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1">
-                    <i class="fa-solid fa-rotate"></i>
-                </button>
-                <button onclick="abrirModalEvidencias()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow">
-                    <i class="fa-solid fa-images"></i> Bitácora del Día
-                </button>
-                <span id="user-badge" class="bg-slate-800 text-emerald-400 text-xs px-3 py-2 rounded-xl border border-slate-700 font-medium"></span>
-                <button onclick="cerrarSesion()" class="bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-xs transition border border-slate-700">
-                    <i class="fa-solid fa-power-off"></i>
-                </button>
+            <div class="flex items-center gap-2">
+                <button onclick="abrirModalEvidencias()" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">Bitácora</button>
+                <span id="user-badge" class="bg-slate-800 text-emerald-400 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700"></span>
+                <button onclick="cerrarSesion()" class="bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg text-xs"><i class="fa-solid fa-power-off"></i></button>
             </div>
         </header>
 
         <div class="flex-1 flex flex-col lg:flex-row">
-            <!-- Panel Lateral -->
-            <aside class="w-full lg:w-[440px] bg-white border-r border-slate-200 flex flex-col z-20 shadow-lg">
-                <div id="admin-selector-box" class="p-4 bg-slate-50 border-b border-slate-200 hidden space-y-3">
-                    <h3 class="font-bold text-xs uppercase text-slate-700 flex items-center gap-2">
-                        <i class="fa-solid fa-users-gear text-emerald-600"></i> Administración de Flota
-                    </h3>
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Monitorear Asesor:</label>
-                        <select id="select-vista-asesor" onchange="cambiarVistaAdmin()" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white font-medium">
-                            <option value="todos">🌍 Ver Todos los Asesores en Simultáneo</option>
-                        </select>
-                    </div>
-
-                    <div class="pt-2 border-t border-slate-200 space-y-2">
-                        <span class="text-[11px] font-bold text-slate-700 block">Registrar Nuevo Asesor</span>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="text" id="nuevo-nombre-asesor" placeholder="Nombre Asesor" class="text-xs p-2 rounded-lg border border-slate-300">
-                            <input type="password" id="nuevo-pin-asesor" placeholder="PIN (ej. 4863)" maxlength="6" class="text-xs p-2 rounded-lg border border-slate-300">
-                        </div>
-                        <button onclick="registrarNuevoAsesorAdmin()" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 rounded-lg transition">
-                            <i class="fa-solid fa-user-plus"></i> Guardar Asesor
-                        </button>
-                    </div>
+            <!-- PANEL LATERAL -->
+            <aside class="w-full lg:w-[400px] bg-white border-r flex flex-col z-20 shadow">
+                <div id="admin-selector-box" class="p-3 bg-slate-50 border-b hidden space-y-2">
+                    <label class="block text-[11px] font-semibold text-slate-600">Monitorear Asesor:</label>
+                    <select id="select-vista-asesor" onchange="cambiarVistaAdmin()" class="w-full text-xs p-2 rounded border bg-white font-medium">
+                        <option value="todos">🌍 Ver Todos</option>
+                    </select>
                 </div>
 
-                <div class="p-5 border-b border-slate-100 space-y-4" id="admin-controls-box">
-                    <div class="flex justify-between items-center">
-                        <h3 class="font-bold text-slate-900 flex items-center gap-2">
-                            <i class="fa-solid fa-route text-emerald-600"></i> Asignar Coordenadas
-                        </h3>
-                        <span id="lock-status-badge" class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">Abierto</span>
-                    </div>
-
-                    <div>
-                        <p class="text-[11px] text-slate-500 mb-1">Formato: <code>Lat, Lng, Nombre del Cliente</code></p>
-                        <textarea id="input-coordenadas" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none font-mono bg-slate-50" placeholder="14.9625, -91.1862&#10;14.9606, -91.1806, José Salvador&#10;14.9620, -91.1820"></textarea>
-                    </div>
-
+                <div class="p-4 border-b space-y-3" id="admin-controls-box">
+                    <h3 class="font-bold text-xs uppercase text-slate-700"><i class="fa-solid fa-route text-emerald-600"></i> Asignar Coordenadas</h3>
+                    <textarea id="input-coordenadas" rows="2" class="w-full text-xs p-2 rounded border font-mono bg-slate-50" placeholder="14.9625, -91.1862, Cliente"></textarea>
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="optimizarYGuardarRuta()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-md">
-                            <i class="fa-solid fa-plus-circle"></i> Asignar Ruta
-                        </button>
-                        <button onclick="limpiarRutaCompleta()" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-md">
-                            <i class="fa-solid fa-trash-can"></i> Limpiar Ruta
-                        </button>
+                        <button onclick="optimizarYGuardarRuta()" class="bg-emerald-600 text-white font-semibold py-2 rounded text-xs">Asignar Ruta</button>
+                        <button onclick="limpiarRutaCompleta()" class="bg-red-600 text-white font-semibold py-2 rounded text-xs">Limpiar</button>
                     </div>
                 </div>
 
-                <!-- Botón de Visita Emergente -->
-                <div id="asesor-emergente-box" class="p-4 bg-emerald-50 border-b border-emerald-100 hidden">
-                    <button onclick="abrirModalVisitaEmergente()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md">
-                        <i class="fa-solid fa-bolt text-amber-300"></i> Registrar Visita Emergente (Fuera de Ruta)
+                <div id="asesor-emergente-box" class="p-3 bg-emerald-50 border-b hidden">
+                    <button onclick="abrirModalVisitaEmergente()" class="w-full bg-blue-600 text-white font-semibold py-2.5 rounded text-xs shadow">
+                        ⚡ Registrar Visita Emergente
                     </button>
                 </div>
 
-                <!-- Telemetría Dinámica GPS -->
-                <div id="info-posicion-envivo" class="px-5 py-3 bg-slate-900 text-white text-xs space-y-1">
-                    <div class="flex justify-between items-center font-bold">
-                        <span class="text-slate-300"><i class="fa-solid fa-satellite text-emerald-400"></i> Telemetría:</span>
-                        <span id="txt-ultima-act" class="text-emerald-400 font-mono">En vivo</span>
-                    </div>
-                    <div class="font-mono text-[11px] text-slate-400" id="txt-coords-envivo">Esperando reporte GPS...</div>
+                <div class="px-4 py-2 bg-slate-900 text-white text-xs">
+                    <div class="flex justify-between font-bold"><span class="text-slate-300">GPS:</span> <span id="txt-ultima-act" class="text-emerald-400 font-mono">Activo</span></div>
+                    <div class="font-mono text-[10px] text-slate-400" id="txt-coords-envivo">Esperando señal...</div>
                 </div>
 
-                <div class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50" id="lista-paradas"></div>
+                <div class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50" id="lista-paradas"></div>
             </aside>
 
-            <!-- Mapa Principal Leaflet -->
+            <!-- MAPA -->
             <main class="flex-1 relative flex flex-col">
-                <div class="absolute top-4 right-4 z-[400] bg-slate-900/90 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-6">
-                    <div class="text-center">
-                        <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-bold">Velocidad</span>
-                        <span id="waze-speed" class="text-2xl font-black text-emerald-400">0.0</span>
-                        <span class="text-xs text-slate-300">km/h</span>
-                    </div>
-                    <div class="h-8 w-px bg-slate-700"></div>
-                    <div class="text-center">
-                        <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-bold">Próximo Destino</span>
-                        <span id="waze-distance" class="text-xl font-bold text-emerald-400">0</span>
-                        <span class="text-xs text-slate-300">m</span>
-                    </div>
-                    <div class="h-8 w-px bg-slate-700"></div>
-                    <button id="btn-gps-toggle" onclick="activarGPSReal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
-                        <i class="fa-solid fa-location-crosshairs"></i> Activar GPS Diario
+                <div class="absolute top-3 right-3 z-[400] bg-slate-900/90 text-white px-4 py-2 rounded-xl shadow border border-slate-700 flex items-center gap-4 text-xs">
+                    <div><b>Vel:</b> <span id="waze-speed" class="text-emerald-400">0.0</span> km/h</div>
+                    <button id="btn-gps-toggle" onclick="activarGPSReal()" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-semibold shadow">
+                        Activar GPS
                     </button>
                 </div>
-
-                <div id="map" class="flex-1 w-full h-[500px] lg:h-full z-10"></div>
+                <div id="map" class="flex-1 w-full h-[450px] lg:h-full z-10"></div>
             </main>
         </div>
     </div>
 
-    <!-- MODAL REGISTRO DE VISITA -->
+    <!-- MODAL VISITA -->
     <div id="modal-visita" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-camera-retro text-emerald-600"></i> Captura de Evidencias (Máx. 4 Fotos)
-                </h3>
-                <button onclick="cerrarModalVisita()" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-3">
+            <h3 class="font-bold text-sm text-slate-900"><i class="fa-solid fa-camera text-emerald-600"></i> Registrar Visita con Fotos</h3>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Seleccionar Fotos (Máx. 4)</label>
+                <input type="file" id="input-fotos" accept="image/*" multiple class="w-full text-xs border rounded p-2 file:bg-emerald-50 file:text-emerald-700 file:border-0 file:py-1 file:px-2 file:rounded">
             </div>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Seleccionar Fotografías (Hasta 4)</label>
-                    <input type="file" id="input-fotos" accept="image/*" multiple onchange="procesarMultiplesFotos(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 border border-slate-200 rounded-xl p-2">
-                </div>
-
-                <div id="grid-preview-fotos" class="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-xl border border-dashed border-slate-300">
-                    <div class="col-span-2 py-6 text-center text-slate-400 text-xs">
-                        <i class="fa-solid fa-images text-2xl mb-1 text-slate-300"></i>
-                        <p>No hay fotos seleccionadas (0/4)</p>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Observaciones / Avance</label>
-                    <textarea id="input-avance" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Escriba los detalles de la visita..."></textarea>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3 pt-2">
-                    <button onclick="guardarVisitaExitosa()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-xs shadow transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-circle-check"></i> Registrar Visita
-                    </button>
-                    <button onclick="marcarIncidenciaAusente()" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl text-xs shadow transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-triangle-exclamation"></i> Cliente Ausente
-                    </button>
-                </div>
+            <textarea id="input-avance" rows="2" class="w-full text-xs p-2.5 rounded border" placeholder="Observaciones..."></textarea>
+            <div class="grid grid-cols-2 gap-2 pt-2">
+                <button onclick="guardarVisitaExitosa()" class="bg-emerald-600 text-white font-semibold py-2.5 rounded text-xs shadow">Guardar Visita</button>
+                <button onclick="marcarIncidenciaAusente()" class="bg-amber-500 text-white font-semibold py-2.5 rounded text-xs shadow">Ausente ⚠</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL REGISTRO DE VISITA EMERGENTE -->
+    <!-- MODAL EMERGENTE -->
     <div id="modal-emergente" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-bolt text-blue-600"></i> Registrar Visita Emergente (Fuera de Ruta)
-                </h3>
-                <button onclick="cerrarModalEmergente()" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-3">
+            <h3 class="font-bold text-sm text-slate-900"><i class="fa-solid fa-bolt text-blue-600"></i> Visita Emergente con Fotos</h3>
+            <input type="text" id="input-emergente-nombre" placeholder="Nombre del Cliente" class="w-full text-xs p-2.5 rounded border">
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Seleccionar Fotos (Máx. 4)</label>
+                <input type="file" id="input-fotos-emergente" accept="image/*" multiple class="w-full text-xs border rounded p-2 file:bg-blue-50 file:text-blue-700 file:border-0 file:py-1 file:px-2 file:rounded">
             </div>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Nombre del Cliente / Motivo Emergente</label>
-                    <input type="text" id="input-emergente-nombre" placeholder="Ej. Cliente Nuevo / Cobro Inesperado" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none font-medium">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Fotografías de Evidencia (Máx. 4)</label>
-                    <input type="file" id="input-fotos-emergente" accept="image/*" multiple onchange="procesarMultiplesFotosEmergentes(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 border border-slate-200 rounded-xl p-2">
-                </div>
-
-                <div id="grid-preview-emergente" class="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-xl border border-dashed border-slate-300">
-                    <div class="col-span-2 py-6 text-center text-slate-400 text-xs">
-                        <i class="fa-solid fa-images text-2xl mb-1 text-slate-300"></i>
-                        <p>No hay fotos seleccionadas (0/4)</p>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Observaciones / Detalles de la Emergencia</label>
-                    <textarea id="input-emergente-avance" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Describa el motivo de la visita fuera de ruta..."></textarea>
-                </div>
-
-                <button onclick="guardarVisitaEmergenteReal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-xs shadow transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-cloud-arrow-up"></i> Guardar Visita Emergente
-                </button>
-            </div>
+            <textarea id="input-emergente-avance" rows="2" class="w-full text-xs p-2.5 rounded border" placeholder="Motivo de la emergencia..."></textarea>
+            <button onclick="guardarVisitaEmergenteReal()" class="w-full bg-blue-600 text-white font-semibold py-2.5 rounded text-xs shadow">Guardar Emergencia</button>
         </div>
     </div>
 
     <!-- MODAL BITÁCORA -->
     <div id="modal-evidencias" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center border-b pb-3 no-print">
-                <div>
-                    <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
-                        <i class="fa-solid fa-book-open text-emerald-600"></i> Bitácora Exclusiva de Hoy
-                    </h3>
-                    <p class="text-xs text-slate-500">Registros y evidencias fotográficas del día actual.</p>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow">
-                        <i class="fa-solid fa-print"></i> Exportar a PDF
-                    </button>
-                    <button onclick="cerrarModalEvidencias()" class="text-slate-400 hover:text-slate-600 text-xl px-2"><i class="fa-solid fa-xmark"></i></button>
-                </div>
+        <div class="bg-white rounded-2xl shadow-xl max-w-3xl w-full p-5 space-y-3 max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-sm text-slate-900">Bitácora y Fotos de Hoy</h3>
+                <button onclick="cerrarModalEvidencias()" class="text-slate-400 text-lg"><i class="fa-solid fa-xmark"></i></button>
             </div>
-
-            <div id="contenedor-grid-evidencias" class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4 p-1"></div>
+            <div id="contenedor-grid-evidencias" class="flex-1 overflow-y-auto space-y-3 p-1 text-xs"></div>
         </div>
     </div>
 
     <script>
         const SUPABASE_URL = "https://lcqztstpefwlwrmkerau.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_YOLr5vJUSRUE13Ud403_RA_xmuR9FJQ";
-
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
         const AGENCIA_CENTRAL = { lat: 15.032100742090686, lng: -91.15299656594703 };
 
-        let usuarioActual = null;
-        let rolActual = null;
-        let vistaAdminSeleccionada = "todos";
-        let map = null;
-        let marcadoresAsesores = {};
-        let capasTrayectorias = {};
-        let polylinesAsesores = [];
-        let watchId = null;
-        let wakeLock = null;
-        let gpsIntervalLoop = null;
-        let paradasVisitandoIndex = null;
-        let fotosDataUrlsActuales = [];
-        let fotosEmergentesActuales = [];
-        let ultimaSincronizacionRemota = 0;
-
+        let usuarioActual = null, rolActual = null, vistaAdminSeleccionada = "todos";
+        let map = null, marcadoresAsesores = {}, polylinesAsesores = [];
+        let watchId = null, gpsIntervalLoop = null, paradasVisitandoIndex = null;
         const COLORES_ASESORES = ["#2563eb", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4"];
 
         const baseInicial = {
-            "1596": { id: "1596", nombre: "Administrador Central (Gerencia)", rol: "admin", color: "#1e293b", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] },
+            "1596": { id: "1596", nombre: "Administrador Central", rol: "admin", color: "#1e293b", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] },
             "4862": { id: "4862", nombre: "Gestor de Cartera", rol: "admin", color: "#0f172a", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] },
-            "1346": { id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#2563eb", lat: null, lng: null, ultimaHoraGps: "Sin señal", historial: [], puntos: [], emergentes: [] },
-            "7946": { id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, paradaActiva: 0, color: "#10b981", lat: null, lng: null, ultimaHoraGps: "Sin señal", historial: [], puntos: [], emergentes: [] }
+            "1346": { id: "1346", nombre: "Asesor 1", rol: "asesor", cerrado: false, color: "#2563eb", lat: null, lng: null, historial: [], puntos: [], emergentes: [] },
+            "7946": { id: "7946", nombre: "Asesor 2", rol: "asesor", cerrado: false, color: "#10b981", lat: null, lng: null, historial: [], puntos: [], emergentes: [] }
         };
 
         let asesoresDB = baseInicial;
@@ -331,862 +172,299 @@
             Object.keys(asesoresDB).forEach(pin => {
                 let usr = asesoresDB[pin];
                 if (usr && usr.rol === 'asesor') {
-                    // Filtrar historial estricto de hoy
                     if (usr.historial) {
-                        usr.historial = usr.historial.filter(item => {
-                            if (Array.isArray(item) && item.length >= 3) {
-                                return item[2] === fechaHoy;
-                            }
-                            return false; // Descarta datos antiguos sin fecha de hoy
-                        });
+                        usr.historial = usr.historial.filter(item => Array.isArray(item) && item[2] === fechaHoy);
                     }
-                    // Filtrar emergentes estrictas de hoy
                     if (usr.emergentes) {
-                        usr.emergentes = usr.emergentes.filter(em => {
-                            if (em.fecha) {
-                                return em.fecha.startsWith(new Date().toLocaleDateString()) || em.fecha.includes(fechaHoy);
-                            }
-                            return true;
-                        });
+                        usr.emergentes = usr.emergentes.filter(em => em.fecha && em.fecha.startsWith(fechaHoy));
                     }
                 }
             });
         }
 
-        function recalcularParadaActiva(usuario) {
-            if (!usuario || !usuario.puntos) return 0;
-            let primeraPendiente = 0;
-            for (let i = 0; i < usuario.puntos.length; i++) {
-                if (usuario.puntos[i].estado === "pendiente" || !usuario.puntos[i].estado) {
-                    primeraPendiente = i;
-                    break;
-                }
-                if (i === usuario.puntos.length - 1) {
-                    primeraPendiente = usuario.puntos.length;
-                }
-            }
-            return primeraPendiente;
-        }
-
         async function sincronizarDesdeSupabase() {
-            let { data, error } = await supabaseClient
-                .from('sistema_flota')
-                .select('*')
-                .eq('id', 'config_global')
-                .maybeSingle();
-
+            let { data } = await supabaseClient.from('sistema_flota').select('*').eq('id', 'config_global').maybeSingle();
             if (data && data.contenido) {
                 asesoresDB = data.contenido;
-                if (!asesoresDB["4862"]) {
-                    asesoresDB["4862"] = { id: "4862", nombre: "Gestor de Cartera", rol: "admin", color: "#0f172a", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] };
-                }
-                Object.keys(asesoresDB).forEach(k => {
-                    if(asesoresDB[k].rol === 'asesor') {
-                        if(!asesoresDB[k].emergentes) asesoresDB[k].emergentes = [];
-                        if(!asesoresDB[k].historial) asesoresDB[k].historial = [];
-                    }
-                });
                 limpiarDatosAntiguosDiarios();
             } else {
                 await supabaseClient.from('sistema_flota').upsert({ id: 'config_global', contenido: baseInicial });
                 asesoresDB = baseInicial;
             }
-
-            if (usuarioActual && asesoresDB[usuarioActual.id]) {
-                usuarioActual = asesoresDB[usuarioActual.id];
-            }
+            if (usuarioActual && asesoresDB[usuarioActual.id]) usuarioActual = asesoresDB[usuarioActual.id];
             if (rolActual === "admin") poblarSelectVistaAdmin();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            actualizarPanelTelemetria();
-        }
-
-        function iniciarEscuchaSupabaseRealtime() {
-            sincronizarDesdeSupabase();
-
-            supabaseClient
-                .channel('public:sistema_flota')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'sistema_flota' }, payload => {
-                    if (payload.new && payload.new.contenido) {
-                        asesoresDB = payload.new.contenido;
-                        limpiarDatosAntiguosDiarios();
-                        if (usuarioActual && asesoresDB[usuarioActual.id]) {
-                            usuarioActual = asesoresDB[usuarioActual.id];
-                        }
-                        if (rolActual === "admin") poblarSelectVistaAdmin();
-                        renderizarListaParadas();
-                        actualizarDibujoRutaMapa();
-                        actualizarPanelTelemetria();
-                    }
-                })
-                .subscribe();
-        }
-
-        async function guardarEnSupabase() {
-            let ahora = Date.now();
-            if (ahora - ultimaSincronizacionRemota < 3000) return;
-            ultimaSincronizacionRemota = ahora;
-            
-            try {
-                await supabaseClient.from('sistema_flota').upsert({ id: 'config_global', contenido: asesoresDB });
-            } catch (err) {
-                console.warn("Error de sincronización con la nube:", err);
-            }
         }
 
         iniciarEscuchaSupabaseRealtime();
+        function iniciarEscuchaSupabaseRealtime() {
+            sincronizarDesdeSupabase();
+            supabaseClient.channel('public:sistema_flota').on('postgres_changes', { event: '*', schema: 'public', table: 'sistema_flota' }, payload => {
+                if (payload.new && payload.new.contenido) {
+                    asesoresDB = payload.new.contenido;
+                    limpiarDatosAntiguosDiarios();
+                    if (usuarioActual && asesoresDB[usuarioActual.id]) usuarioActual = asesoresDB[usuarioActual.id];
+                    if (rolActual === "admin") poblarSelectVistaAdmin();
+                    renderizarListaParadas();
+                    actualizarDibujoRutaMapa();
+                }
+            }).subscribe();
+        }
+
+        async function guardarEnSupabase() {
+            try {
+                await supabaseClient.from('sistema_flota').upsert({ id: 'config_global', contenido: asesoresDB });
+            } catch (e) { console.warn(e); }
+        }
 
         async function intentarLogin() {
             await sincronizarDesdeSupabase();
-            const rolSeleccionado = document.getElementById("login-role").value;
-            const pass = document.getElementById("login-pass").value.trim();
-            
+            let pass = document.getElementById("login-pass").value.trim();
             let cuenta = asesoresDB[pass] || baseInicial[pass];
-
-            if (!cuenta) {
-                alert("PIN o clave incorrecta.");
-                return;
-            }
-
-            if (rolSeleccionado === "admin" && cuenta.rol !== "admin") {
-                alert("⚠️ Esta clave pertenece a un perfil de Asesor.");
-                return;
-            }
-
-            if (rolSeleccionado === "asesor" && cuenta.rol !== "asesor") {
-                alert("⚠️ Seleccione 'Administrador' en el tipo de acceso.");
-                return;
-            }
-
+            if (!cuenta) { alert("PIN incorrecto"); return; }
             rolActual = cuenta.rol;
             usuarioActual = cuenta;
-            iniciarSistemaApp();
+            document.getElementById("login-screen").classList.add("hidden");
+            document.getElementById("app-container").classList.remove("hidden");
+            if (rolActual === "admin") {
+                document.getElementById("admin-controls-box").style.display = "block";
+                document.getElementById("admin-selector-box").style.display = "block";
+                poblarSelectVistaAdmin();
+            } else {
+                document.getElementById("admin-controls-box").style.display = "none";
+                document.getElementById("admin-selector-box").style.display = "none";
+                document.getElementById("asesor-emergente-box").style.display = "block";
+            }
+            setTimeout(() => { inicializarMapaLeaflet(); renderizarListaParadas(); if (rolActual === "asesor") activarGPSReal(); }, 150);
         }
 
         function cerrarSesion() {
             if (watchId) navigator.geolocation.clearWatch(watchId);
-            if (wakeLock) wakeLock.release().catch(() => {});
             if (gpsIntervalLoop) clearInterval(gpsIntervalLoop);
             document.getElementById("app-container").classList.add("hidden");
             document.getElementById("login-screen").classList.remove("hidden");
             document.getElementById("login-pass").value = "";
         }
 
-        async function iniciarSistemaApp() {
-            document.getElementById("login-screen").classList.add("hidden");
-            document.getElementById("app-container").classList.remove("hidden");
-            document.getElementById("input-coordenadas").value = "";
-
-            await sincronizarDesdeSupabase();
-
-            if (rolActual === "admin") {
-                document.getElementById("header-title").innerText = "Panel Gerencial Central";
-                document.getElementById("user-badge").innerText = `${usuarioActual.nombre} (${usuarioActual.id})`;
-                document.getElementById("admin-controls-box").style.display = "block";
-                document.getElementById("admin-selector-box").style.display = "block";
-                document.getElementById("asesor-emergente-box").style.display = "none";
-                poblarSelectVistaAdmin();
-            } else {
-                document.getElementById("header-title").innerText = `Ruta Activa - ${usuarioActual.nombre}`;
-                document.getElementById("user-badge").innerText = `PIN: ${usuarioActual.id}`;
-                document.getElementById("admin-selector-box").style.display = "none";
-                document.getElementById("admin-controls-box").style.display = usuarioActual.cerrado ? "none" : "block";
-                document.getElementById("asesor-emergente-box").style.display = "block";
-            }
-
-            setTimeout(() => {
-                inicializarMapaLeaflet();
-                renderizarListaParadas();
-                if (rolActual === "asesor") activarGPSReal();
-            }, 200);
-        }
-
         function poblarSelectVistaAdmin() {
             const select = document.getElementById("select-vista-asesor");
-            let valActual = select.value || "todos";
-            select.innerHTML = `<option value="todos">🌍 Ver Todos los Asesores en Simultáneo</option>`;
+            select.innerHTML = `<option value="todos">🌍 Ver Todos</option>`;
             Object.keys(asesoresDB).forEach(pin => {
                 let usr = asesoresDB[pin];
                 if (usr && usr.rol === "asesor") {
-                    let opt = document.createElement("option");
-                    opt.value = pin;
-                    opt.innerText = usr.nombre + ` (PIN: ${pin})`;
-                    select.appendChild(opt);
+                    select.innerHTML += `<option value="${pin}">${usr.nombre}</option>`;
                 }
             });
-            select.value = valActual;
         }
 
         function cambiarVistaAdmin() {
             vistaAdminSeleccionada = document.getElementById("select-vista-asesor").value;
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
-            actualizarPanelTelemetria();
-        }
-
-        function actualizarPanelTelemetria() {
-            let target = usuarioActual;
-            if (rolActual === "admin") {
-                if (vistaAdminSeleccionada !== "todos" && asesoresDB[vistaAdminSeleccionada]) {
-                    target = asesoresDB[vistaAdminSeleccionada];
-                } else {
-                    document.getElementById("txt-ultima-act").innerText = "Monitoreo General";
-                    document.getElementById("txt-coords-envivo").innerText = "Supabase en tiempo real activo";
-                    return;
-                }
-            }
-
-            if (target && target.lat && target.lng) {
-                document.getElementById("txt-ultima-act").innerText = target.ultimaHoraGps || "Transmitiendo...";
-                document.getElementById("txt-coords-envivo").innerText = `Lat: ${target.lat.toFixed(6)}, Lng: ${target.lng.toFixed(6)}`;
-            } else {
-                document.getElementById("txt-ultima-act").innerText = "Esperando señal...";
-                document.getElementById("txt-coords-envivo").innerText = "El asesor aún no activa el GPS";
-            }
         }
 
         function inicializarMapaLeaflet() {
             if (!map) {
                 map = L.map('map').setView([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], 14);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-
-                let agIcon = L.divIcon({
-                    className: 'custom-div-icon',
-                    html: `<div style="background-color:#1e293b;color:white;padding:8px;border-radius:50%;text-align:center;"><i class="fa-solid fa-building-columns"></i></div>`,
-                    iconSize: [36, 36], iconAnchor: [18, 18]
-                });
-                L.marker([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], { icon: agIcon }).addTo(map).bindPopup("<b>Agencia Central</b>");
-            } else {
-                map.invalidateSize();
-            }
+                L.marker([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]).addTo(map).bindPopup("Agencia Central");
+            } else { map.invalidateSize(); }
             actualizarDibujoRutaMapa();
         }
 
         function actualizarDibujoRutaMapa() {
             if (!map) return;
-            
             polylinesAsesores.forEach(l => map.removeLayer(l));
             polylinesAsesores = [];
-
             let fechaHoy = new Date().toLocaleDateString();
 
-            let asesoresARenderizar = [];
-            if (rolActual === "asesor") {
-                asesoresARenderizar = [usuarioActual];
-            } else {
-                if (vistaAdminSeleccionada === "todos") {
-                    Object.keys(asesoresDB).forEach(pin => {
-                        if (asesoresDB[pin] && asesoresDB[pin].rol === "asesor") asesoresARenderizar.push(asesoresDB[pin]);
-                    });
-                } else if (asesoresDB[vistaAdminSeleccionada]) {
-                    asesoresARenderizar = [asesoresDB[vistaAdminSeleccionada]];
-                }
-            }
+            let targetList = rolActual === "asesor" ? [usuarioActual] : (vistaAdminSeleccionada === "todos" ? Object.values(asesoresDB).filter(u => u.rol === "asesor") : [asesoresDB[vistaAdminSeleccionada]]);
 
-            asesoresARenderizar.forEach((usr, index) => {
+            targetList.forEach((usr, idx) => {
                 if (!usr) return;
-                let colorAsesor = usr.color || COLORES_ASESORES[index % COLORES_ASESORES.length];
+                let col = usr.color || COLORES_ASESORES[idx % COLORES_ASESORES.length];
 
-                if (usr.puntos && usr.puntos.length > 0) {
-                    let latLngsRuta = [[AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]];
-                    usr.puntos.forEach((p, idx) => {
-                        latLngsRuta.push([p.lat, p.lng]);
-                        let colorPin = (p.estado === 'completado') ? '#10b981' : (p.estado === 'incidencia' ? '#f59e0b' : colorAsesor);
-                        
-                        let pinIcon = L.divIcon({
-                            className: 'custom-div-icon',
-                            html: `<div style="background-color:${colorPin};color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${idx + 1}</div>`,
-                            iconSize: [28, 28], iconAnchor: [14, 14]
-                        });
-                        
-                        let marker = L.marker([p.lat, p.lng], { icon: pinIcon }).addTo(map);
-                        marker.bindPopup(`<b>${idx + 1}. ${p.cliente}</b><br><a href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}" target="_blank" style="color:blue;text-decoration:underline;">Abrir en Google Maps</a>`);
-                        polylinesAsesores.push(marker);
-                    });
-
-                    latLngsRuta.push([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]);
-                    let polylineRuta = L.polyline(latLngsRuta, { color: colorAsesor, weight: 3, opacity: 0.4, dashArray: '6, 6' }).addTo(map);
-                    polylinesAsesores.push(polylineRuta);
-                }
-
-                if (usr.emergentes && usr.emergentes.length > 0) {
-                    usr.emergentes.forEach((em, eIdx) => {
-                        let emIcon = L.divIcon({
-                            className: 'custom-div-icon',
-                            html: `<div style="background-color:#2563eb;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"><i class="fa-solid fa-bolt text-amber-300"></i></div>`,
-                            iconSize: [28, 28], iconAnchor: [14, 14]
-                        });
-                        let markerEm = L.marker([em.lat, em.lng], { icon: emIcon }).addTo(map);
-                        markerEm.bindPopup(`<b>⚡ Emergente: ${em.cliente}</b><br>${em.avance}<br><a href="https://www.google.com/maps/search/?api=1&query=${em.lat},${em.lng}" target="_blank" style="color:blue;text-decoration:underline;">Abrir en Google Maps</a>`);
-                        polylinesAsesores.push(markerEm);
+                if (usr.puntos) {
+                    usr.puntos.forEach((p, i) => {
+                        let m = L.marker([p.lat, p.lng]).addTo(map).bindPopup(`${i+1}. ${p.cliente}`);
+                        polylinesAsesores.push(m);
                     });
                 }
-
-                // Renderizar solo la línea de hoy
-                if (usr.historial && usr.historial.length > 0) {
-                    let puntosHoy = [];
-                    usr.historial.forEach(item => {
-                        if (Array.isArray(item) && item.length >= 3 && item[2] === fechaHoy) {
-                            puntosHoy.push([item[0], item[1]]);
-                        }
+                if (usr.emergentes) {
+                    usr.emergentes.forEach(em => {
+                        let m = L.marker([em.lat, em.lng]).addTo(map).bindPopup(`⚡ ${em.cliente}`);
+                        polylinesAsesores.push(m);
                     });
-
-                    if (puntosHoy.length > 1) {
-                        if (capasTrayectorias[usr.id]) map.removeLayer(capasTrayectorias[usr.id]);
-                        let lineaTrayectoria = L.polyline(puntosHoy, { color: colorAsesor, weight: 5, opacity: 0.85 }).addTo(map);
-                        capasTrayectorias[usr.id] = lineaTrayectoria;
-                        polylinesAsesores.push(lineaTrayectoria);
+                }
+                if (usr.historial) {
+                    let pts = usr.historial.filter(item => Array.isArray(item) && item[2] === fechaHoy).map(item => [item[0], item[1]]);
+                    if (pts.length > 1) {
+                        let line = L.polyline(pts, { color: col, weight: 4 }).addTo(map);
+                        polylinesAsesores.push(line);
                     }
                 }
-
                 if (usr.lat && usr.lng) {
-                    let motoIcon = L.divIcon({
-                        className: 'custom-div-icon',
-                        html: `<div class="pulse-marker-active" style="background-color:${colorAsesor};color:white;padding:8px;border-radius:50%;text-align:center;border:2px solid white;"><i class="fa-solid fa-motorcycle"></i></div>`,
-                        iconSize: [36, 36], iconAnchor: [18, 18]
-                    });
-
                     if (marcadoresAsesores[usr.id]) {
                         marcadoresAsesores[usr.id].setLatLng([usr.lat, usr.lng]);
                     } else {
-                        let m = L.marker([usr.lat, usr.lng], { icon: motoIcon }).addTo(map).bindPopup(`<b>${usr.nombre}</b><br>Ubicación en vivo`);
-                        marcadoresAsesores[usr.id] = m;
+                        marcadoresAsesores[usr.id] = L.marker([usr.lat, usr.lng]).addTo(map).bindPopup(usr.nombre);
                     }
                 }
             });
         }
 
-        async function registrarNuevoAsesorAdmin() {
-            const nombre = document.getElementById("nuevo-nombre-asesor").value.trim();
-            const pin = document.getElementById("nuevo-pin-asesor").value.trim();
-
-            if (!nombre || !pin) {
-                alert("Ingrese el nombre y el PIN.");
-                return;
+        function activarGPSReal() {
+            if (rolActual !== "asesor") return;
+            if ("geolocation" in navigator) {
+                watchId = navigator.geolocation.watchPosition(pos => {
+                    let lat = pos.coords.latitude, lng = pos.coords.longitude;
+                    let fechaHoy = new Date().toLocaleDateString();
+                    document.getElementById("waze-speed").innerText = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(1) : "0.0";
+                    usuarioActual.lat = lat; usuarioActual.lng = lng;
+                    if (!usuarioActual.historial) usuarioActual.historial = [];
+                    usuarioActual.historial.push([lat, lng, fechaHoy]);
+                    asesoresDB[usuarioActual.id] = usuarioActual;
+                    guardarEnSupabase();
+                    actualizarDibujoRutaMapa();
+                }, null, { enableHighAccuracy: true });
             }
-            if (asesoresDB[pin]) {
-                alert("Este PIN ya existe.");
-                return;
-            }
-
-            let colorAsignado = COLORES_ASESORES[Object.keys(asesoresDB).length % COLORES_ASESORES.length];
-            asesoresDB[pin] = { 
-                id: pin, nombre: nombre, rol: "asesor", cerrado: false, paradaActiva: 0, 
-                color: colorAsignado, lat: null, lng: null,
-                ultimaHoraGps: "Esperando señal", historial: [], puntos: [], emergentes: [] 
-            };
-            
-            await guardarEnSupabase();
-            document.getElementById("nuevo-nombre-asesor").value = "";
-            document.getElementById("nuevo-pin-asesor").value = "";
-            poblarSelectVistaAdmin();
-            alert(`¡Asesor ${nombre} guardado!`);
         }
 
         async function optimizarYGuardarRuta() {
-            let targetPin = null;
-            if (rolActual === "admin") {
-                if (vistaAdminSeleccionada === "todos") {
-                    let seleccion = prompt("Ingrese el PIN del Asesor al cual asignar la ruta:", "1346");
-                    if (!seleccion || !asesoresDB[seleccion]) {
-                        alert("PIN inválido o cancelado.");
-                        return;
-                    }
-                    targetPin = seleccion;
-                } else {
-                    targetPin = vistaAdminSeleccionada;
-                }
-            } else {
-                targetPin = usuarioActual.id;
-            }
-
-            let textoCoords = document.getElementById("input-coordenadas").value.trim();
-            if (!textoCoords) {
-                alert("Ingrese al menos una coordenada");
-                return;
-            }
-
-            let lineas = textoCoords.split("\n");
-            let nuevosPuntos = [];
-            
-            lineas.forEach((linea, idx) => {
-                let lineaLimpia = linea.trim();
-                if (!lineaLimpia) return;
-
-                let partes = lineaLimpia.split(/[,/\t|]+/);
-                if (partes.length >= 2) {
-                    let lat = parseFloat(partes[0].trim());
-                    let lng = parseFloat(partes[1].trim());
-                    let nombreCliente = (partes.length >= 3 && partes[2].trim() !== "") ? partes.slice(2).join(" - ").trim() : `Cliente Destino #${idx + 1}`;
-
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        nuevosPuntos.push({
-                            lat: lat,
-                            lng: lng,
-                            cliente: nombreCliente,
-                            estado: "pendiente",
-                            fotos: [],
-                            avance: ""
-                        });
-                    }
-                }
+            let pin = rolActual === "admin" ? prompt("PIN del Asesor:", "1346") : usuarioActual.id;
+            if (!pin || !asesoresDB[pin]) return;
+            let txt = document.getElementById("input-coordenadas").value.trim();
+            let pts = [];
+            txt.split("\n").forEach((l, i) => {
+                let p = l.split(/[,/\t|]+/);
+                if (p.length >= 2) pts.push({ lat: parseFloat(p[0]), lng: parseFloat(p[1]), cliente: p[2] || `Cliente ${i+1}`, estado: "pendiente" });
             });
-
-            if (nuevosPuntos.length === 0) {
-                alert("⚠️ Coordenadas no válidas. Formato: Lat, Lng, Nombre");
-                return;
-            }
-
-            asesoresDB[targetPin].puntos = nuevosPuntos;
-            asesoresDB[targetPin].paradaActiva = 0;
-            asesoresDB[targetPin].cerrado = false;
-
+            if (pts.length === 0) { alert("Coordenadas no válidas"); return; }
+            asesoresDB[pin].puntos = pts;
             await guardarEnSupabase();
-            alert(`¡Ruta asignada correctamente!`);
+            alert("Ruta asignada");
             document.getElementById("input-coordenadas").value = "";
-            renderizarListaParadas();
-            actualizarDibujoRutaMapa();
-        }
-
-        async function limpiarRutaCompleta() {
-            if (!confirm("¿Desea limpiar toda la ruta?")) return;
-            usuarioActual.puntos = [];
-            asesoresDB[usuarioActual.id] = usuarioActual;
-            await guardarEnSupabase();
-            renderizarListaParadas();
-            actualizarDibujoRutaMapa();
-        }
-
-        async function moverParada(pinAsesor, indexActual, direccion) {
-            let usr = asesoresDB[pinAsesor];
-            if (!usr || !usr.puntos) return;
-
-            let nuevoIndex = indexActual + direccion;
-            if (nuevoIndex < 0 || nuevoIndex >= usr.puntos.length) return;
-
-            let temp = usr.puntos[indexActual];
-            usr.puntos[indexActual] = usr.puntos[nuevoIndex];
-            usr.puntos[nuevoIndex] = temp;
-
-            usr.paradaActiva = recalcularParadaActiva(usr);
-            asesoresDB[pinAsesor] = usr;
-
-            await guardarEnSupabase();
-            renderizarListaParadas();
-            actualizarDibujoRutaMapa();
-        }
-
-        async function eliminarParadaIndividual(pinAsesor, indexEliminar) {
-            let usr = asesoresDB[pinAsesor];
-            if (!usr || !usr.puntos) return;
-            usr.puntos.splice(indexEliminar, 1);
-            asesoresDB[pinAsesor] = usr;
-            await guardarEnSupabase();
             renderizarListaParadas();
             actualizarDibujoRutaMapa();
         }
 
         function renderizarListaParadas() {
             const contenedor = document.getElementById("lista-paradas");
-            let target = usuarioActual;
-            if (rolActual === "admin") {
-                if (vistaAdminSeleccionada !== "todos" && asesoresDB[vistaAdminSeleccionada]) {
-                    target = asesoresDB[vistaAdminSeleccionada];
-                } else {
-                    let htmlGral = `<div class="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-2">
-                        <h4 class="font-bold text-xs text-slate-700">Resumen Diario de Asesores</h4>`;
-                    Object.keys(asesoresDB).forEach(pin => {
-                        let usr = asesoresDB[pin];
-                        if (usr.rol === "asesor") {
-                            let completados = (usr.puntos || []).filter(p => p.estado === 'completado').length;
-                            let total = (usr.puntos || []).length;
-                            let emergentesCount = (usr.emergentes || []).length;
-                            htmlGral += `<div class="flex justify-between items-center text-xs border-b pb-1">
-                                <span><b>${usr.nombre}</b></span>
-                                <span class="font-mono text-emerald-600">${completados}/${total} rutinas | <span class="text-blue-600">${emergentesCount} emergentes</span></span>
-                            </div>`;
-                        }
-                    });
-                    htmlGral += `</div>`;
-                    contenedor.innerHTML = htmlGral;
-                    return;
-                }
+            let target = rolActual === "admin" ? (vistaAdminSeleccionada === "todos" ? null : asesoresDB[vistaAdminSeleccionada]) : usuarioActual;
+            
+            if (!target) {
+                contenedor.innerHTML = `<div class="p-3 text-xs text-slate-500">Seleccione un asesor en el panel superior.</div>`;
+                return;
             }
 
             let html = "";
-            
-            if (target && target.emergentes && target.emergentes.length > 0) {
-                html += `<div class="mb-2"><span class="text-[11px] font-bold text-blue-600 uppercase tracking-wider"><i class="fa-solid fa-bolt"></i> Visitas Emergentes de Hoy</span></div>`;
-                target.emergentes.forEach((em, eIdx) => {
-                    let enlaceMaps = `https://www.google.com/maps/search/?api=1&query=${em.lat},${em.lng}`;
-                    html += `
-                        <div class="p-3 bg-blue-50/60 rounded-xl border border-blue-200 shadow-sm flex items-center justify-between text-xs gap-2 mb-2">
-                            <div>
-                                <span class="font-bold block text-blue-900">⚡ ${em.cliente}</span>
-                                <span class="text-[10px] text-slate-600">${em.avance}</span>
-                            </div>
-                            <div class="flex items-center gap-1.5">
-                                <a href="${enlaceMaps}" target="_blank" class="bg-blue-100 hover:bg-blue-200 text-blue-700 p-1.5 rounded-lg transition text-xs border border-blue-300">
-                                    <i class="fa-solid fa-map-location-dot"></i>
-                                </a>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-
-            if (!target || !target.puntos || target.puntos.length === 0) {
-                html += `<div class="text-center py-4 text-slate-400 text-xs">No hay ruta asignada para hoy.</div>`;
-            } else {
-                html += `<div class="mb-1 mt-2"><span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider"><i class="fa-solid fa-route"></i> Ruta Asignada</span></div>`;
-                target.puntos.forEach((p, idx) => {
-                    let badgeColor = "bg-slate-100 text-slate-600 border-slate-200";
-                    let textoEstado = `Parada #${idx + 1}`;
-                    if (p.estado === "completado") {
-                        badgeColor = "bg-emerald-100 text-emerald-700 border-emerald-200";
-                        textoEstado = "Completado ✓";
-                    } else if (p.estado === "incidencia") {
-                        badgeColor = "bg-amber-100 text-amber-700 border-amber-200";
-                        textoEstado = "Ausente ⚠";
-                    }
-
-                    let enlaceGoogleMaps = `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`;
-
-                    html += `
-                        <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-sm flex items-center justify-between text-xs gap-2 mb-2">
-                            <div class="flex items-center gap-2">
-                                <div>
-                                    <span class="font-bold block text-slate-800">${idx + 1}. ${p.cliente}</span>
-                                    <span class="text-[10px] font-mono text-slate-500">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-1.5">
-                                <span class="px-2 py-1 rounded-lg border font-semibold text-[10px] ${badgeColor}">${textoEstado}</span>
-                                <a href="${enlaceGoogleMaps}" target="_blank" class="bg-blue-50 hover:bg-blue-100 text-blue-600 p-1.5 rounded-lg transition text-xs border border-blue-200">
-                                    <i class="fa-solid fa-map-location-dot"></i>
-                                </a>
-                                ${rolActual === "asesor" && p.estado !== "completado" && p.estado !== "incidencia" ? `
-                                    <button onclick="abrirModalVisita(${idx})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1.5 rounded-lg text-xs transition shadow">
-                                        <i class="fa-solid fa-camera"></i>
-                                    </button>
-                                ` : ""}
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-            contenedor.innerHTML = html;
-        }
-
-        async function activarGPSReal() {
-            if (rolActual !== "asesor") return;
-            const btn = document.getElementById("btn-gps-toggle");
-            btn.innerHTML = `<i class="fa-solid fa-satellite-dish fa-bounce"></i> GPS Activo`;
-            btn.className = "bg-blue-600 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow animate-pulse";
-
-            if ("geolocation" in navigator) {
-                const opcionesGPS = { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 };
-
-                if (watchId) navigator.geolocation.clearWatch(watchId);
-                watchId = navigator.geolocation.watchPosition(procesarNuevaCoordenadaGPS, errorGPSHandler, opcionesGPS);
-
-                if (gpsIntervalLoop) clearInterval(gpsIntervalLoop);
-                gpsIntervalLoop = setInterval(() => {
-                    navigator.geolocation.getCurrentPosition(procesarNuevaCoordenadaGPS, errorGPSHandler, opcionesGPS);
-                }, 4000);
-            }
-        }
-
-        function procesarNuevaCoordenadaGPS(position) {
-            let lat = position.coords.latitude;
-            let lng = position.coords.longitude;
-            let speed = position.coords.speed ? (position.coords.speed * 3.6).toFixed(1) : "0.0";
-            let fechaHoy = new Date().toLocaleDateString();
-
-            document.getElementById("waze-speed").innerText = speed;
-            
-            usuarioActual.lat = lat;
-            usuarioActual.lng = lng;
-            usuarioActual.ultimaHoraGps = new Date().toLocaleTimeString();
-
-            if (!usuarioActual.historial) usuarioActual.historial = [];
-            
-            let ultimoPunto = usuarioActual.historial[usuarioActual.historial.length - 1];
-            if (!ultimoPunto || ultimoPunto[0] !== lat || ultimoPunto[1] !== lng) {
-                usuarioActual.historial.push([lat, lng, fechaHoy]);
-            }
-
-            asesoresDB[usuarioActual.id] = usuarioActual;
-            guardarEnSupabase();
-            actualizarDibujoRutaMapa();
-            actualizarPanelTelemetria();
-        }
-
-        function errorGPSHandler(error) {
-            console.warn("Reintentando señal de GPS...", error);
-        }
-
-        function abrirModalVisita(index) {
-            paradasVisitandoIndex = index;
-            document.getElementById("input-fotos").value = "";
-            document.getElementById("input-avance").value = "";
-            fotosDataUrlsActuales = [];
-            document.getElementById("grid-preview-fotos").innerHTML = `
-                <div class="col-span-2 py-6 text-center text-slate-400 text-xs">
-                    <i class="fa-solid fa-images text-2xl mb-1 text-slate-300"></i>
-                    <p>No hay fotos seleccionadas (0/4)</p>
-                </div>
-            `;
-            document.getElementById("modal-visita").classList.remove("hidden");
-        }
-
-        function cerrarModalVisita() {
-            document.getElementById("modal-visita").classList.add("hidden");
-        }
-
-        function procesarMultiplesFotos(event) {
-            let files = Array.from(event.target.files);
-            if (files.length === 0) return;
-            if (files.length > 4) {
-                alert("⚠️ Máximo 4 fotografías.");
-                event.target.value = "";
-                return;
-            }
-
-            fotosDataUrlsActuales = [];
-            const previewContainer = document.getElementById("grid-preview-fotos");
-            previewContainer.innerHTML = "";
-
-            files.forEach((file, index) => {
-                let reader = new FileReader();
-                reader.onload = function(e) {
-                    let img = new Image();
-                    img.onload = function() {
-                        let canvas = document.createElement("canvas");
-                        let ctx = canvas.getContext("2d");
-                        canvas.width = 600; // Reducido para evitar saturar memoria y cierres
-                        canvas.height = (img.height * 600) / img.width;
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-                        ctx.fillRect(10, canvas.height - 50, canvas.width - 20, 38);
-                        ctx.fillStyle = "#ffffff";
-                        ctx.font = "bold 16px monospace";
-                        ctx.fillText(`GPS: ${usuarioActual.lat ? usuarioActual.lat.toFixed(4) : 0}, ${usuarioActual.lng ? usuarioActual.lng.toFixed(4) : 0}`, 15, canvas.height - 28);
-                        ctx.fillText(`FECHA: ${new Date().toLocaleDateString()}`, 15, canvas.height - 10);
-
-                        let dataUrl = canvas.toDataURL("image/jpeg", 0.5);
-                        fotosDataUrlsActuales.push(dataUrl);
-
-                        previewContainer.innerHTML += `
-                            <div class="relative border rounded-lg overflow-hidden shadow-sm bg-white">
-                                <span class="absolute top-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">#${index + 1}</span>
-                                <img src="${dataUrl}" class="w-full h-24 object-cover">
-                            </div>
-                        `;
-                    }
-                    img.src = e.target.result;
-                }
-                reader.readAsDataURL(file);
+            (target.emergentes || []).forEach(em => {
+                html += `<div class="p-2.5 bg-blue-50 border border-blue-200 rounded text-xs mb-2"><b>⚡ ${em.cliente}</b><br>${em.avance}</div>`;
             });
+            (target.puntos || []).forEach((p, idx) => {
+                html += `<div class="p-2.5 bg-white border rounded text-xs flex justify-between items-center mb-2">
+                    <div><b>${idx+1}. ${p.cliente}</b><br><span class="text-[10px] text-slate-500">${p.estado}</span></div>
+                    ${rolActual === "asesor" && p.estado === "pendiente" ? `<button onclick="abrirModalVisita(${idx})" class="bg-emerald-600 text-white px-2 py-1 rounded text-[10px]">Visita</button>` : ""}
+                </div>`;
+            });
+            contenedor.innerHTML = html || `<div class="text-xs text-slate-400 p-2">Sin paradas para hoy.</div>`;
         }
+
+        async function subirFotosAlCloud(inputElement) {
+            let files = inputElement.files;
+            let urlsFotos = [];
+            if (!files || files.length === 0) return urlsFotos;
+
+            for (let i = 0; i < Math.min(files.length, 4); i++) {
+                let file = files[i];
+                let fileName = `${usuarioActual.id}_${Date.now()}_${i}.jpg`;
+                let { data, error } = await supabaseClient.storage.from('evidencias').upload(fileName, file);
+                if (!error) {
+                    let { data: publicUrlData } = supabaseClient.storage.from('evidencias').getPublicUrl(fileName);
+                    if (publicUrlData) urlsFotos.push(publicUrlData.publicUrl);
+                }
+            }
+            return urlsFotos;
+        }
+
+        function abrirModalVisita(i) { paradasVisitandoIndex = i; document.getElementById("input-fotos").value = ""; document.getElementById("input-avance").value = ""; document.getElementById("modal-visita").classList.remove("hidden"); }
+        function cerrarModalVisita() { document.getElementById("modal-visita").classList.add("hidden"); }
 
         async function guardarVisitaExitosa() {
             if (paradasVisitandoIndex === null) return;
-            if (fotosDataUrlsActuales.length === 0) {
-                alert("⚠️ Adjunte al menos una fotografía.");
-                return;
-            }
+            let inputFiles = document.getElementById("input-fotos");
+            let fotosUrls = await subirFotosAlCloud(inputFiles);
 
-            let avance = document.getElementById("input-avance").value.trim();
             usuarioActual.puntos[paradasVisitandoIndex].estado = "completado";
-            usuarioActual.puntos[paradasVisitandoIndex].fotos = fotosDataUrlsActuales;
-            usuarioActual.puntos[paradasVisitandoIndex].avance = avance || "Visita completada";
-
-            asesoresDB[usuarioActual.id] = usuarioActual;
-            await supabaseClient.from('sistema_flota').upsert({ id: 'config_global', contenido: asesoresDB });
+            usuarioActual.puntos[paradasVisitandoIndex].fotos = fotosUrls;
+            usuarioActual.puntos[paradasVisitandoIndex].avance = document.getElementById("input-avance").value || "Completado";
             
-            cerrarModalVisita();
-            renderizarListaParadas();
-            actualizarDibujoRutaMapa();
-            alert("¡Visita guardada con éxito!");
+            asesoresDB[usuarioActual.id] = usuarioActual;
+            await guardarEnSupabase();
+            cerrarModalVisita(); renderizarListaParadas(); actualizarDibujoRutaMapa();
+            alert("Visita y fotos guardadas con éxito");
         }
 
         async function marcarIncidenciaAusente() {
             if (paradasVisitandoIndex === null) return;
             usuarioActual.puntos[paradasVisitandoIndex].estado = "incidencia";
-            usuarioActual.puntos[paradasVisitandoIndex].fotos = [];
-            usuarioActual.puntos[paradasVisitandoIndex].avance = "Cliente ausente";
-
+            usuarioActual.puntos[paradasVisitandoIndex].avance = "Ausente";
             asesoresDB[usuarioActual.id] = usuarioActual;
-            await supabaseClient.from('sistema_flota').upsert({ id: 'config_global', contenido: asesoresDB });
-            
-            cerrarModalVisita();
-            renderizarListaParadas();
-            actualizarDibujoRutaMapa();
-            alert("Incidencia marcada.");
+            await guardarEnSupabase();
+            cerrarModalVisita(); renderizarListaParadas(); actualizarDibujoRutaMapa();
         }
 
-        function abrirModalVisitaEmergente() {
-            if (!usuarioActual.lat || !usuarioActual.lng) {
-                alert("⚠️ Esperando señal GPS actual...");
-                return;
-            }
-            document.getElementById("input-emergente-nombre").value = "";
-            document.getElementById("input-fotos-emergente").value = "";
-            document.getElementById("input-emergente-avance").value = "";
-            fotosEmergentesActuales = [];
-            document.getElementById("grid-preview-emergente").innerHTML = `
-                <div class="col-span-2 py-6 text-center text-slate-400 text-xs">
-                    <i class="fa-solid fa-images text-2xl mb-1 text-slate-300"></i>
-                    <p>No hay fotos seleccionadas (0/4)</p>
-                </div>
-            `;
-            document.getElementById("modal-emergente").classList.remove("hidden");
-        }
-
-        function cerrarModalEmergente() {
-            document.getElementById("modal-emergente").classList.add("hidden");
-        }
-
-        function procesarMultiplesFotosEmergentes(event) {
-            let files = Array.from(event.target.files);
-            if (files.length === 0) return;
-            if (files.length > 4) {
-                alert("⚠️ Máximo 4 fotografías.");
-                event.target.value = "";
-                return;
-            }
-
-            fotosEmergentesActuales = [];
-            const previewContainer = document.getElementById("grid-preview-emergente");
-            previewContainer.innerHTML = "";
-
-            files.forEach((file, index) => {
-                let reader = new FileReader();
-                reader.onload = function(e) {
-                    let img = new Image();
-                    img.onload = function() {
-                        let canvas = document.createElement("canvas");
-                        let ctx = canvas.getContext("2d");
-                        canvas.width = 600;
-                        canvas.height = (img.height * 600) / img.width;
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-                        ctx.fillRect(10, canvas.height - 50, canvas.width - 20, 38);
-                        ctx.fillStyle = "#ffffff";
-                        ctx.font = "bold 16px monospace";
-                        ctx.fillText(`GPS: ${usuarioActual.lat.toFixed(4)}, ${usuarioActual.lng.toFixed(4)}`, 15, canvas.height - 28);
-                        ctx.fillText(`FECHA: ${new Date().toLocaleDateString()}`, 15, canvas.height - 10);
-
-                        let dataUrl = canvas.toDataURL("image/jpeg", 0.5);
-                        fotosEmergentesActuales.push(dataUrl);
-
-                        previewContainer.innerHTML += `
-                            <div class="relative border rounded-lg overflow-hidden shadow-sm bg-white">
-                                <span class="absolute top-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">#${index + 1}</span>
-                                <img src="${dataUrl}" class="w-full h-24 object-cover">
-                            </div>
-                        `;
-                    }
-                    img.src = e.target.result;
-                }
-                reader.readAsDataURL(file);
-            });
-        }
+        function abrirModalVisitaEmergente() { document.getElementById("modal-emergente").classList.remove("hidden"); }
+        function cerrarModalEmergente() { document.getElementById("modal-emergente").classList.add("hidden"); }
 
         async function guardarVisitaEmergenteReal() {
-            let nombreCliente = document.getElementById("input-emergente-nombre").value.trim();
-            let avance = document.getElementById("input-emergente-avance").value.trim();
+            let nombre = document.getElementById("input-emergente-nombre").value.trim();
+            let av = document.getElementById("input-emergente-avance").value.trim();
+            let inputFiles = document.getElementById("input-fotos-emergente");
+            
+            if (!nombre) { alert("Ingrese el nombre"); return; }
+            if (!usuarioActual.lat) { alert("Esperando GPS..."); return; }
 
-            if (!nombreCliente) {
-                alert("⚠️ Ingrese el nombre del cliente.");
-                return;
-            }
-            if (fotosEmergentesActuales.length === 0) {
-                alert("⚠️ Adjunte al menos una fotografía.");
-                return;
-            }
+            let fotosUrls = await subirFotosAlCloud(inputFiles);
 
             if (!usuarioActual.emergentes) usuarioActual.emergentes = [];
-            usuarioActual.emergentes.push({
-                lat: usuarioActual.lat,
-                lng: usuarioActual.lng,
-                cliente: nombreCliente,
-                avance: avance || "Visita emergente",
-                fotos: fotosEmergentesActuales,
-                fecha: new Date().toLocaleString()
+            usuarioActual.emergentes.push({ 
+                lat: usuarioActual.lat, 
+                lng: usuarioActual.lng, 
+                cliente: nombre, 
+                avance: av, 
+                fotos: fotosUrls,
+                fecha: new Date().toLocaleDateString() 
             });
 
             asesoresDB[usuarioActual.id] = usuarioActual;
-            await supabaseClient.from('sistema_flota').upsert({ id: 'config_global', contenido: asesoresDB });
-            
-            cerrarModalEmergente();
-            renderizarListaParadas();
-            actualizarDibujoRutaMapa();
-            alert("⚡ ¡Visita emergente guardada con éxito!");
+            await guardarEnSupabase();
+            cerrarModalEmergente(); renderizarListaParadas(); actualizarDibujoRutaMapa();
+            alert("Emergente y fotos guardadas con éxito");
         }
 
         function abrirModalEvidencias() {
-            const grid = document.getElementById("contenedor-grid-evidencias");
+            let grid = document.getElementById("contenedor-grid-evidencias");
             let html = "";
-            let fechaHoy = new Date().toLocaleDateString();
-
-            Object.keys(asesoresDB).forEach(pin => {
-                let usr = asesoresDB[pin];
-                if (usr.puntos) {
-                    usr.puntos.forEach((p) => {
-                        if (p.estado === "completado" || p.estado === "incidencia") {
-                            let fotosHtml = `<div class="grid grid-cols-2 gap-2 mt-2">`;
-                            (p.fotos || []).forEach((fotoUrl, fIdx) => {
-                                fotosHtml += `<img src="${fotoUrl}" class="w-full h-32 object-cover rounded-lg border shadow-inner">`;
-                            });
-                            fotosHtml += `</div>`;
-
-                            html += `
-                                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2 shadow-sm">
-                                    <div class="flex justify-between items-center text-xs font-bold text-slate-700">
-                                        <span>${usr.nombre} — ${p.cliente}</span>
-                                        <span class="px-2 py-0.5 rounded text-[10px] ${p.estado === 'completado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${p.estado.toUpperCase()}</span>
-                                    </div>
-                                    <p class="text-xs text-slate-600">${p.avance || ''}</p>
-                                    ${fotosHtml}
-                                </div>
-                            `;
-                        }
-                    });
-                }
-
-                if (usr.emergentes) {
-                    usr.emergentes.forEach((em) => {
-                        let fotosHtml = `<div class="grid grid-cols-2 gap-2 mt-2">`;
-                        (em.fotos || []).forEach((fotoUrl) => {
-                            fotosHtml += `<img src="${fotoUrl}" class="w-full h-32 object-cover rounded-lg border shadow-inner">`;
-                        });
-                        fotosHtml += `</div>`;
-
-                        html += `
-                            <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-4 space-y-2 shadow-sm">
-                                <div class="flex justify-between items-center text-xs font-bold text-blue-900">
-                                    <span>${usr.nombre} — ⚡ EMERGENTE: ${em.cliente}</span>
-                                    <span class="px-2 py-0.5 rounded text-[10px] bg-blue-600 text-white">${em.fecha}</span>
-                                </div>
-                                <p class="text-xs text-slate-700">${em.avance}</p>
-                                ${fotosHtml}
-                            </div>
-                        `;
-                    });
-                }
+            Object.values(asesoresDB).forEach(usr => {
+                if(usr.puntos) usr.puntos.forEach(p => { 
+                    if(p.estado !== "pendiente") {
+                        let imgHtml = "";
+                        (p.fotos || []).forEach(url => { imgHtml += `<img src="${url}" class="w-20 h-20 object-cover rounded border">`; });
+                        html += `<div class="p-2 border rounded bg-slate-50 space-y-1"><b>${usr.nombre} - ${p.cliente}</b>: ${p.avance}<div class="flex gap-1 flex-wrap">${imgHtml}</div></div>`; 
+                    }
+                });
+                if(usr.emergentes) usr.emergentes.forEach(em => { 
+                    let imgHtml = "";
+                    (em.fotos || []).forEach(url => { imgHtml += `<img src="${url}" class="w-20 h-20 object-cover rounded border">`; });
+                    html += `<div class="p-2 border rounded bg-blue-50 space-y-1"><b>⚡ ${usr.nombre} - ${em.cliente}</b>: ${em.avance}<div class="flex gap-1 flex-wrap">${imgHtml}</div></div>`; 
+                });
             });
-
-            grid.innerHTML = html || `<div class="text-center col-span-2 py-10 text-slate-400 text-xs">No hay registros en la bitácora de hoy.</div>`;
+            grid.innerHTML = html || "Sin registros hoy.";
             document.getElementById("modal-evidencias").classList.remove("hidden");
         }
-
-        function cerrarModalEvidencias() {
-            document.getElementById("modal-evidencias").classList.add("hidden");
-        }
+        function cerrarModalEvidencias() { document.getElementById("modal-evidencias").classList.add("hidden"); }
     </script>
 </body>
 </html>
