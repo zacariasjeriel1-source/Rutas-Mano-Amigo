@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mano Amiga - Bitácora y PDF</title>
+    <title>Mano Amiga - Profesional</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Leaflet CSS -->
@@ -14,26 +14,34 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @media print {
+            body * { visibility: hidden; }
+            #modal-evidencias, #modal-evidencias * { visibility: visible; }
+            #modal-evidencias { position: absolute; left: 0; top: 0; width: 100%; height: auto; background: white !important; box-shadow: none !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased">
 
-    <!-- LOGIN DIRECTO POR PIN -->
+    <!-- LOGIN SEGURO Y ELEGANTE -->
     <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 border border-slate-100">
             <div class="text-center mb-6">
-                <div class="inline-flex items-center justify-center w-14 h-14 bg-emerald-600 text-white rounded-2xl shadow mb-3 text-xl">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-emerald-600 text-white rounded-2xl shadow-lg mb-3 text-2xl">
                     <i class="fa-solid fa-motorcycle"></i>
                 </div>
-                <h1 class="text-xl font-bold text-slate-900">Mano Amiga</h1>
-                <p class="text-xs text-slate-500">Ingrese su PIN personal</p>
+                <h1 class="text-2xl font-black text-slate-900 tracking-tight">Mano Amiga</h1>
+                <p class="text-xs text-slate-500 font-medium mt-1">Control de Flota y Evidencias de Campo</p>
             </div>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1 text-center">PIN de Acceso</label>
-                    <input type="password" id="login-pass" maxlength="6" placeholder="••••" class="w-full text-center text-2xl tracking-widest px-3 py-3 rounded-xl border bg-slate-50 font-bold">
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1.5 text-center">PIN de Acceso Personal</label>
+                    <input type="password" id="login-pass" maxlength="6" placeholder="••••" class="w-full text-center text-2xl tracking-widest px-4 py-3.5 rounded-2xl border-2 border-slate-200 bg-slate-50 focus:border-emerald-600 focus:outline-none font-bold transition">
                 </div>
-                <button onclick="intentarLogin()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl shadow transition text-sm">
-                    Iniciar Sesión
+                <button onclick="intentarLogin()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-emerald-600/30 transition text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
                 </button>
             </div>
         </div>
@@ -41,28 +49,33 @@
 
     <!-- APP CONTAINER -->
     <div id="app-container" class="min-h-screen flex flex-col hidden">
-        <header class="bg-slate-900 text-white px-4 py-3 flex justify-between items-center shadow">
-            <div class="flex items-center gap-2">
-                <div class="bg-emerald-600 p-2 rounded-lg"><i class="fa-solid fa-satellite-dish"></i></div>
-                <h2 class="font-bold text-sm" id="header-title">Control Diario</h2>
+        <header class="bg-slate-900 text-white px-5 py-3.5 flex justify-between items-center shadow-md">
+            <div class="flex items-center gap-3">
+                <div class="bg-emerald-600 p-2.5 rounded-xl shadow"><i class="fa-solid fa-satellite-dish text-white"></i></div>
+                <div>
+                    <h2 class="font-black text-sm tracking-wide">MANO AMIGA</h2>
+                    <p class="text-[10px] text-slate-400">Monitoreo y Rutas</p>
+                </div>
             </div>
-            <div class="flex items-center gap-2">
-                <button onclick="abrirModalEvidencias()" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow">Bitácora y PDF</button>
-                <span id="user-badge" class="bg-slate-800 text-emerald-400 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700"></span>
-                <button onclick="cerrarSesion()" class="bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg text-xs"><i class="fa-solid fa-power-off"></i></button>
+            <div class="flex items-center gap-3">
+                <button onclick="abrirModalEvidencias()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-book-open"></i> Bitácora / PDF
+                </button>
+                <span id="user-badge" class="bg-slate-800 text-emerald-400 text-xs px-3 py-2 rounded-xl border border-slate-700 font-semibold shadow-inner"></span>
+                <button onclick="cerrarSesion()" class="bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs transition shadow" title="Cerrar Sesión"><i class="fa-solid fa-power-off"></i></button>
             </div>
         </header>
 
         <div class="flex-1 flex flex-col lg:flex-row">
             <!-- PANEL LATERAL -->
-            <aside class="w-full lg:w-[400px] bg-white border-r flex flex-col z-20 shadow">
-                <div id="admin-selector-box" class="p-3 bg-slate-50 border-b hidden space-y-2">
-                    <label class="block text-[11px] font-semibold text-slate-600">Monitorear Asesor:</label>
-                    <select id="select-vista-asesor" onchange="cambiarVistaAdmin()" class="w-full text-xs p-2 rounded border bg-white font-medium">
-                        <option value="todos">🌍 Ver Todos</option>
+            <aside class="w-full lg:w-[410px] bg-white border-r flex flex-col z-20 shadow-sm">
+                <div id="admin-selector-box" class="p-4 bg-slate-50 border-b hidden space-y-2.5">
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">Monitorear Asesor:</label>
+                    <select id="select-vista-asesor" onchange="cambiarVistaAdmin()" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-semibold shadow-sm focus:outline-none focus:border-emerald-600">
+                        <option value="todos">🌍 Ver Todos en Mapa</option>
                     </select>
                     <div id="admin-lock-box" class="pt-1">
-                        <button id="btn-toggle-cerrar" onclick="toggleCerrarEdicionRuta()" class="w-full bg-amber-600 text-white font-semibold py-1.5 rounded text-xs shadow">
+                        <button id="btn-toggle-cerrar" onclick="toggleCerrarEdicionRuta()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-xl text-xs shadow transition flex items-center justify-center gap-1.5">
                             🔒 Cerrar Edición de Ruta
                         </button>
                     </div>
@@ -70,34 +83,40 @@
 
                 <!-- PANEL PARA ASESOR -->
                 <div class="p-4 border-b space-y-3" id="asesor-controls-box">
-                    <h3 class="font-bold text-xs uppercase text-slate-700"><i class="fa-solid fa-route text-emerald-600"></i> Colocar Mis Coordenadas (Ruta)</h3>
-                    <textarea id="input-coordenadas" rows="3" class="w-full text-xs p-2 rounded border font-mono bg-slate-50" placeholder="14.9625, -91.1862, Cliente A&#10;14.9650, -91.1890, Cliente B"></textarea>
+                    <h3 class="font-bold text-xs uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-route text-emerald-600"></i> Colocar Mis Coordenadas (Ruta)
+                    </h3>
+                    <textarea id="input-coordenadas" rows="3" class="w-full text-xs p-3 rounded-xl border border-slate-200 font-mono bg-slate-50 focus:outline-none focus:border-emerald-600 shadow-inner" placeholder="14.9625, -91.1862, Cliente A&#10;14.9650, -91.1890, Cliente B"></textarea>
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="asesorGuardarRuta()" class="bg-emerald-600 text-white font-semibold py-2 rounded text-xs shadow">Guardar Mi Ruta</button>
-                        <button onclick="asesorLimpiarRuta()" class="bg-red-600 text-white font-semibold py-2 rounded text-xs shadow">Limpiar Ruta</button>
+                        <button onclick="asesorGuardarRuta()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs shadow transition flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-floppy-disk"></i> Guardar Ruta
+                        </button>
+                        <button onclick="asesorLimpiarRuta()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-xs shadow transition flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> Limpiar
+                        </button>
                     </div>
-                    <p id="lbl-estado-edicion" class="text-[10px] text-slate-500 font-semibold text-center"></p>
+                    <p id="lbl-estado-edicion" class="text-[11px] font-bold text-center py-1 rounded-lg bg-slate-100 text-slate-600"></p>
                 </div>
 
-                <div id="asesor-emergente-box" class="p-3 bg-emerald-50 border-b hidden">
-                    <button onclick="abrirModalVisitaEmergente()" class="w-full bg-blue-600 text-white font-semibold py-2.5 rounded text-xs shadow">
-                        ⚡ Registrar Visita Emergente
+                <div id="asesor-emergente-box" class="p-4 bg-emerald-50/60 border-b hidden">
+                    <button onclick="abrirModalVisitaEmergente()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-2xl text-xs shadow-md shadow-blue-600/30 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-bolt text-amber-300"></i> Registrar Visita Emergente
                     </button>
                 </div>
 
-                <div class="px-4 py-2 bg-slate-900 text-white text-xs">
-                    <div class="flex justify-between font-bold"><span class="text-slate-300">GPS En Vivo:</span> <span id="txt-ultima-act" class="text-emerald-400 font-mono">Activo</span></div>
-                    <div class="font-mono text-[10px] text-slate-400" id="txt-coords-envivo">Esperando señal...</div>
+                <div class="px-4 py-2.5 bg-slate-900 text-white text-xs flex justify-between items-center shadow-inner">
+                    <div class="flex items-center gap-2"><span class="text-slate-300 font-semibold">GPS:</span> <span id="txt-ultima-act" class="text-emerald-400 font-bold">Activo</span></div>
+                    <div class="font-mono text-[11px] text-slate-400" id="txt-coords-envivo">Buscando señal...</div>
                 </div>
 
-                <div class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50" id="lista-paradas"></div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50" id="lista-paradas"></div>
             </aside>
 
             <!-- MAPA -->
             <main class="flex-1 relative flex flex-col">
-                <div class="absolute top-3 right-3 z-[400] bg-slate-900/90 text-white px-4 py-2 rounded-xl shadow border border-slate-700 flex items-center gap-4 text-xs">
-                    <div><b>Vel:</b> <span id="waze-speed" class="text-emerald-400">0.0</span> km/h</div>
-                    <button id="btn-gps-toggle" onclick="activarGPSReal()" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-semibold shadow">
+                <div class="absolute top-4 right-4 z-[400] bg-slate-900/95 text-white px-4 py-2.5 rounded-2xl shadow-xl border border-slate-700/80 flex items-center gap-4 text-xs backdrop-blur-sm">
+                    <div><b>Vel:</b> <span id="waze-speed" class="text-emerald-400 font-mono font-bold">0.0</span> km/h</div>
+                    <button id="btn-gps-toggle" onclick="activarGPSReal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-bold shadow transition">
                         Activar GPS
                     </button>
                 </div>
@@ -107,45 +126,60 @@
     </div>
 
     <!-- MODAL VISITA -->
-    <div id="modal-visita" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-3">
-            <h3 class="font-bold text-sm text-slate-900"><i class="fa-solid fa-camera text-emerald-600"></i> Registrar Visita con Fotos</h3>
-            <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Seleccionar Fotos (Máx. 4)</label>
-                <input type="file" id="input-fotos" accept="image/*" multiple class="w-full text-xs border rounded p-2 file:bg-emerald-50 file:text-emerald-700 file:border-0 file:py-1 file:px-2 file:rounded">
+    <div id="modal-visita" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 hidden">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-100">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-black text-sm text-slate-900 flex items-center gap-2"><i class="fa-solid fa-camera text-emerald-600 text-lg"></i> Registrar Visita Exitosa</h3>
+                <button onclick="cerrarModalVisita()" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <textarea id="input-avance" rows="2" class="w-full text-xs p-2.5 rounded border" placeholder="Observaciones de la visita..."></textarea>
-            <div class="grid grid-cols-2 gap-2 pt-2">
-                <button onclick="guardarVisitaExitosa()" class="bg-emerald-600 text-white font-semibold py-2.5 rounded text-xs shadow">Guardar Visita</button>
-                <button onclick="marcarIncidenciaAusente()" class="bg-amber-500 text-white font-semibold py-2.5 rounded text-xs shadow">Ausente ⚠</button>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5">Fotografías de Evidencia (Máx. 4)</label>
+                <input type="file" id="input-fotos" accept="image/*" multiple class="w-full text-xs border-2 border-dashed border-slate-300 rounded-2xl p-3 file:bg-emerald-50 file:text-emerald-700 file:border-0 file:py-1.5 file:px-3 file:rounded-xl file:font-bold hover:border-emerald-500 transition">
+            </div>
+            <textarea id="input-avance" rows="3" class="w-full text-xs p-3 rounded-2xl border-2 border-slate-200 focus:border-emerald-600 focus:outline-none transition" placeholder="Observaciones de la visita..."></textarea>
+            <div class="grid grid-cols-2 gap-3 pt-2">
+                <button id="btn-guardar-visita" onclick="guardarVisitaExitosa()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl text-xs shadow-md transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> Guardar Visita
+                </button>
+                <button onclick="marcarIncidenciaAusente()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-2xl text-xs shadow-md transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Ausente ⚠
+                </button>
             </div>
         </div>
     </div>
 
     <!-- MODAL EMERGENTE -->
-    <div id="modal-emergente" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-3">
-            <h3 class="font-bold text-sm text-slate-900"><i class="fa-solid fa-bolt text-blue-600"></i> Visita Emergente con Fotos</h3>
-            <input type="text" id="input-emergente-nombre" placeholder="Nombre del Cliente" class="w-full text-xs p-2.5 rounded border">
-            <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Seleccionar Fotos (Máx. 4)</label>
-                <input type="file" id="input-fotos-emergente" accept="image/*" multiple class="w-full text-xs border rounded p-2 file:bg-blue-50 file:text-blue-700 file:border-0 file:py-1 file:px-2 file:rounded">
+    <div id="modal-emergente" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 hidden">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-100">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-black text-sm text-slate-900 flex items-center gap-2"><i class="fa-solid fa-bolt text-amber-500 text-lg"></i> Visita Emergente</h3>
+                <button onclick="cerrarModalEmergente()" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <textarea id="input-emergente-avance" rows="2" class="w-full text-xs p-2.5 rounded border" placeholder="Motivo de la emergencia..."></textarea>
-            <button onclick="guardarVisitaEmergenteReal()" class="w-full bg-blue-600 text-white font-semibold py-2.5 rounded text-xs shadow">Guardar Emergencia</button>
+            <input type="text" id="input-emergente-nombre" placeholder="Nombre del Cliente" class="w-full text-xs p-3 rounded-2xl border-2 border-slate-200 focus:border-blue-600 focus:outline-none transition font-semibold">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5">Fotografías de Evidencia (Máx. 4)</label>
+                <input type="file" id="input-fotos-emergente" accept="image/*" multiple class="w-full text-xs border-2 border-dashed border-slate-300 rounded-2xl p-3 file:bg-blue-50 file:text-blue-700 file:border-0 file:py-1.5 file:px-3 file:rounded-xl file:font-bold hover:border-blue-500 transition">
+            </div>
+            <textarea id="input-emergente-avance" rows="3" class="w-full text-xs p-3 rounded-2xl border-2 border-slate-200 focus:border-blue-600 focus:outline-none transition" placeholder="Motivo de la emergencia..."></textarea>
+            <button id="btn-guardar-emergente" onclick="guardarVisitaEmergenteReal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl text-xs shadow-lg shadow-blue-600/30 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-bolt"></i> Guardar Emergencia
+            </button>
         </div>
     </div>
 
     <!-- MODAL BITÁCORA Y PDF -->
-    <div id="modal-evidencias" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-xl max-w-3xl w-full p-5 space-y-3 max-h-[85vh] flex flex-col">
-            <div class="flex justify-between items-center border-b pb-2">
-                <h3 class="font-bold text-sm text-slate-900">Bitácora y Evidencias Fotográficas</h3>
-                <div class="flex items-center gap-2">
-                    <button onclick="window.print()" class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold shadow flex items-center gap-1">
-                        <i class="fa-solid fa-file-pdf"></i> Imprimir / Guardar PDF
+    <div id="modal-evidencias" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 hidden">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-3xl w-full p-6 space-y-4 max-h-[85vh] flex flex-col border border-slate-100">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                    <h3 class="font-black text-base text-slate-900 flex items-center gap-2"><i class="fa-solid fa-book-bookmark text-emerald-600"></i> Bitácora y Evidencias Fotográficas</h3>
+                    <p class="text-[11px] text-slate-500 font-medium">Reporte oficial de campo verificado - Mano Amiga</p>
+                </div>
+                <div class="flex items-center gap-2.5">
+                    <button onclick="window.print()" class="no-print bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-pdf"></i> Guardar como PDF
                     </button>
-                    <button onclick="cerrarModalEvidencias()" class="text-slate-400 text-lg px-2"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="cerrarModalEvidencias()" class="no-print text-slate-400 hover:text-slate-700 text-lg px-2"><i class="fa-solid fa-xmark"></i></button>
                 </div>
             </div>
             <div id="contenedor-grid-evidencias" class="flex-1 overflow-y-auto space-y-3 p-1 text-xs"></div>
@@ -269,9 +303,11 @@
                 if (asesorData && asesorData.cerrado) {
                     document.getElementById("input-coordenadas").disabled = true;
                     document.getElementById("lbl-estado-edicion").innerText = "🔒 Edición cerrada por el Gestor / Admin";
+                    document.getElementById("lbl-estado-edicion").className = "text-[11px] font-bold text-center py-1.5 rounded-xl bg-amber-100 text-amber-800";
                 } else {
                     document.getElementById("input-coordenadas").disabled = false;
                     document.getElementById("lbl-estado-edicion").innerText = "✍ Puedes colocar y editar tu ruta";
+                    document.getElementById("lbl-estado-edicion").className = "text-[11px] font-bold text-center py-1.5 rounded-xl bg-emerald-100 text-emerald-800";
                 }
             }
         }
@@ -286,7 +322,7 @@
 
         function poblarSelectVistaAdmin() {
             const select = document.getElementById("select-vista-asesor");
-            select.innerHTML = `<option value="todos">🌍 Ver Todos</option>`;
+            select.innerHTML = `<option value="todos">🌍 Ver Todos en Mapa</option>`;
             Object.keys(asesoresDB).forEach(pin => {
                 let usr = asesoresDB[pin];
                 if (usr && usr.rol === "asesor") {
@@ -313,10 +349,10 @@
             let asesorObj = asesoresDB[vistaAdminSeleccionada];
             if (asesorObj && asesorObj.cerrado) {
                 btn.innerText = "🔓 Abrir Edición de Ruta";
-                btn.className = "w-full bg-emerald-600 text-white font-semibold py-1.5 rounded text-xs shadow";
+                btn.className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs shadow transition flex items-center justify-center gap-1.5";
             } else {
                 btn.innerText = "🔒 Cerrar Edición de Ruta";
-                btn.className = "w-full bg-amber-600 text-white font-semibold py-1.5 rounded text-xs shadow";
+                btn.className = "w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-xl text-xs shadow transition flex items-center justify-center gap-1.5";
             }
         }
 
@@ -337,7 +373,14 @@
             if (!map) {
                 map = L.map('map').setView([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], 14);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-                L.marker([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]).addTo(map).bindPopup("Agencia Central");
+                
+                let iconoAgencia = L.divIcon({
+                    className: 'custom-agencia-icon',
+                    html: `<div style="background-color: #0f172a; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #34d399; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.4); font-size: 16px;"><i class="fa-solid fa-building-shield"></i></div>`,
+                    iconSize: [38, 38],
+                    iconAnchor: [19, 19]
+                });
+                L.marker([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], { icon: iconoAgencia }).addTo(map).bindPopup("<b>Agencia Central</b>");
             } else { map.invalidateSize(); }
             actualizarDibujoRutaMapa();
         }
@@ -356,36 +399,42 @@
 
                 if (usr.puntos) {
                     usr.puntos.forEach((p, i) => {
-                        let m = L.marker([p.lat, p.lng]).addTo(map).bindPopup(`${i+1}. ${p.cliente} (${p.estado})`);
+                        let m = L.marker([p.lat, p.lng]).addTo(map).bindPopup(`<b>${i+1}. ${p.cliente}</b><br>Estado: ${p.estado}`);
                         polylinesAsesores.push(m);
                     });
                 }
                 if (usr.emergentes) {
                     usr.emergentes.forEach(em => {
-                        let m = L.marker([em.lat, em.lng]).addTo(map).bindPopup(`⚡ Emergencia: ${em.cliente}`);
+                        let iconoEmergencia = L.divIcon({
+                            className: 'custom-emergencia-icon',
+                            html: `<div style="background-color: #f59e0b; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.3); font-size: 14px;"><i class="fa-solid fa-bolt"></i></div>`,
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 16]
+                        });
+                        let m = L.marker([em.lat, em.lng], { icon: iconoEmergencia }).addTo(map).bindPopup(`<b>⚡ Emergencia: ${em.cliente}</b><br>${em.avance}`);
                         polylinesAsesores.push(m);
                     });
                 }
                 if (usr.historial) {
                     let pts = usr.historial.filter(item => Array.isArray(item) && item[2] === fechaHoy).map(item => [item[0], item[1]]);
                     if (pts.length > 1) {
-                        let line = L.polyline(pts, { color: col, weight: 4 }).addTo(map);
+                        let line = L.polyline(pts, { color: col, weight: 4, opacity: 0.8 }).addTo(map);
                         polylinesAsesores.push(line);
                     }
                 }
                 if (usr.lat && usr.lng) {
                     let iconoMoto = L.divIcon({
                         className: 'custom-moto-icon',
-                        html: `<div style="background-color: ${col}; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.3); font-size: 14px;"><i class="fa-solid fa-motorcycle"></i></div>`,
-                        iconSize: [34, 34],
-                        iconAnchor: [17, 17]
+                        html: `<div style="background-color: ${col}; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.4); font-size: 16px;"><i class="fa-solid fa-motorcycle"></i></div>`,
+                        iconSize: [38, 38],
+                        iconAnchor: [19, 19]
                     });
 
                     if (marcadoresAsesores[usr.id]) {
                         marcadoresAsesores[usr.id].setLatLng([usr.lat, usr.lng]);
                         marcadoresAsesores[usr.id].setIcon(iconoMoto);
                     } else {
-                        marcadoresAsesores[usr.id] = L.marker([usr.lat, usr.lng], { icon: iconoMoto }).addTo(map).bindPopup(usr.nombre);
+                        marcadoresAsesores[usr.id] = L.marker([usr.lat, usr.lng], { icon: iconoMoto }).addTo(map).bindPopup(`<b>${usr.nombre}</b>`);
                     }
                 }
             });
@@ -450,25 +499,41 @@
             let target = rolActual === "admin" ? (vistaAdminSeleccionada === "todos" ? null : asesoresDB[vistaAdminSeleccionada]) : usuarioActual;
             
             if (!target) {
-                contenedor.innerHTML = `<div class="p-3 text-xs text-slate-500">Selecciona un asesor en el panel superior para ver sus paradas.</div>`;
+                contenedor.innerHTML = `<div class="p-4 text-xs text-slate-500 text-center font-medium bg-white rounded-2xl border shadow-sm">Selecciona un asesor en el panel superior para ver sus paradas.</div>`;
                 return;
             }
 
             let html = "";
-            (target.emergentes || []).forEach(em => {
+            (target.emergentes || []).forEach((em, emIndex) => {
                 let imgHtml = "";
-                (em.fotos || []).forEach(url => { imgHtml += `<img src="${url}" class="w-10 h-10 object-cover rounded border inline-block mr-1">`; });
-                html += `<div class="p-2.5 bg-blue-50 border border-blue-200 rounded text-xs mb-2"><b>⚡ Emergencia: ${em.cliente}</b><br>${em.avance}<div class="mt-1">${imgHtml}</div></div>`;
+                (em.fotos || []).forEach(url => { imgHtml += `<img src="${url}" class="w-12 h-12 object-cover rounded-xl border shadow-sm inline-block mr-1">`; });
+                let botonBorrar = rolActual === "asesor" ? `<button onclick="borrarEmergente(${emIndex})" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-lg text-[10px] font-bold float-right shadow"><i class="fa-solid fa-trash"></i></button>` : "";
+                html += `<div class="p-3 bg-amber-50/80 border border-amber-200 rounded-2xl text-xs mb-3 shadow-sm"><div class="flex items-center justify-between mb-1"><b><i class="fa-solid fa-bolt text-amber-500"></i> Emergencia: ${em.cliente}</b> ${botonBorrar}</div><p class="text-slate-600 font-medium">${em.avance}</p><div class="mt-2 flex flex-wrap gap-1">${imgHtml}</div></div>`;
             });
             (target.puntos || []).forEach((p, idx) => {
                 let imgHtml = "";
-                (p.fotos || []).forEach(url => { imgHtml += `<img src="${url}" class="w-10 h-10 object-cover rounded border inline-block mr-1">`; });
-                html += `<div class="p-2.5 bg-white border rounded text-xs flex justify-between items-center mb-2 shadow-sm">
-                    <div><b>${idx+1}. ${p.cliente}</b><br><span class="text-[10px] text-slate-500 font-semibold uppercase">${p.estado}</span><div class="mt-1">${imgHtml}</div></div>
-                    ${rolActual === "asesor" && p.estado === "pendiente" ? `<button onclick="abrirModalVisita(${idx})" class="bg-emerald-600 text-white px-2.5 py-1.5 rounded font-bold text-[10px] shadow">Visita</button>` : ""}
+                (p.fotos || []).forEach(url => { imgHtml += `<img src="${url}" class="w-12 h-12 object-cover rounded-xl border shadow-sm inline-block mr-1">`; });
+                let badgeColor = p.estado === "completado" ? "bg-emerald-100 text-emerald-800" : (p.estado === "ausente" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600");
+                html += `<div class="p-3 bg-white border border-slate-200 rounded-2xl text-xs flex justify-between items-center mb-3 shadow-sm">
+                    <div class="space-y-1">
+                        <b>${idx+1}. ${p.cliente}</b><br>
+                        <span class="text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wide inline-block ${badgeColor}">${p.estado}</span>
+                        <div class="mt-1 flex flex-wrap gap-1">${imgHtml}</div>
+                    </div>
+                    ${rolActual === "asesor" && p.estado === "pendiente" ? `<button onclick="abrirModalVisita(${idx})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl font-bold text-[10px] shadow transition">Visita</button>` : ""}
                 </div>`;
             });
-            contenedor.innerHTML = html || `<div class="text-xs text-slate-400 p-2 text-center">Sin paradas asignadas para hoy.</div>`;
+            contenedor.innerHTML = html || `<div class="text-xs text-slate-400 p-4 text-center font-medium bg-white rounded-2xl border shadow-sm">Sin paradas asignadas para hoy.</div>`;
+        }
+
+        async function borrarEmergente(index) {
+            if (confirm("¿Deseas eliminar este registro de emergencia?")) {
+                usuarioActual.emergentes.splice(index, 1);
+                asesoresDB[usuarioActual.id] = usuarioActual;
+                await guardarEnSupabase();
+                renderizarListaParadas();
+                actualizarDibujoRutaMapa();
+            }
         }
 
         async function subirFotosAlCloud(inputElement) {
@@ -493,6 +558,9 @@
 
         async function guardarVisitaExitosa() {
             if (paradasVisitandoIndex === null) return;
+            let btn = document.getElementById("btn-guardar-visita");
+            btn.disabled = true; btn.innerText = "Guardando...";
+
             let inputFiles = document.getElementById("input-fotos");
             let fotosUrls = await subirFotosAlCloud(inputFiles);
 
@@ -502,8 +570,9 @@
             
             asesoresDB[usuarioActual.id] = usuarioActual;
             await guardarEnSupabase();
+            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Guardar Visita';
             cerrarModalVisita(); renderizarListaParadas(); actualizarDibujoRutaMapa();
-            alert("Visita y fotos guardadas con éxito en la nube");
+            alert("Visita y fotos guardadas con éxito");
         }
 
         async function marcarIncidenciaAusente() {
@@ -526,6 +595,9 @@
             if (!nombre) { alert("Ingrese el nombre del cliente"); return; }
             if (!usuarioActual.lat) { alert("Esperando señal de GPS..."); return; }
 
+            let btn = document.getElementById("btn-guardar-emergente");
+            btn.disabled = true; btn.innerText = "Guardando...";
+
             let fotosUrls = await subirFotosAlCloud(inputFiles);
 
             if (!usuarioActual.emergentes) usuarioActual.emergentes = [];
@@ -540,8 +612,9 @@
 
             asesoresDB[usuarioActual.id] = usuarioActual;
             await guardarEnSupabase();
+            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Guardar Emergencia';
             cerrarModalEmergente(); renderizarListaParadas(); actualizarDibujoRutaMapa();
-            alert("Emergente y fotos guardadas con éxito");
+            alert("Emergente guardada con éxito");
         }
 
         function abrirModalEvidencias() {
@@ -552,17 +625,17 @@
                     if(p.estado !== "pendiente") {
                         let imgHtml = "";
                         (p.fotos || []).forEach(url => { 
-                            imgHtml += `<a href="${url}" target="_blank"><img src="${url}" class="w-20 h-20 object-cover rounded border shadow-sm inline-block mr-1 mb-1"></a>`; 
+                            imgHtml += `<a href="${url}" target="_blank"><img src="${url}" style="width:110px; height:110px; object-fit:cover; border-radius:10px; border:2px solid #e2e8f0; display:inline-block; margin-right:6px; margin-bottom:6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"></a>`; 
                         });
-                        html += `<div class="p-3 border rounded bg-slate-50 space-y-1 mb-2"><b>${usr.nombre} - ${p.cliente}</b> (${p.estado})<br><span class="text-slate-600">${p.avance}</span><div class="mt-1">${imgHtml}</div></div>`; 
+                        html += `<div style="padding:14px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; margin-bottom:12px;"><b>${usr.nombre} - ${p.cliente}</b> (${p.estado})<br><span style="color:#475569; font-weight:500;">${p.avance}</span><div style="margin-top:10px;">${imgHtml}</div></div>`; 
                     }
                 });
                 if(usr.emergentes) usr.emergentes.forEach(em => { 
                     let imgHtml = "";
                     (em.fotos || []).forEach(url => { 
-                        imgHtml += `<a href="${url}" target="_blank"><img src="${url}" class="w-20 h-20 object-cover rounded border shadow-sm inline-block mr-1 mb-1"></a>`; 
+                        imgHtml += `<a href="${url}" target="_blank"><img src="${url}" style="width:110px; height:110px; object-fit:cover; border-radius:10px; border:2px solid #bfdbfe; display:inline-block; margin-right:6px; margin-bottom:6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"></a>`; 
                     });
-                    html += `<div class="p-3 border rounded bg-blue-50 space-y-1 mb-2"><b>⚡ ${usr.nombre} - ${em.cliente} (Emergencia)</b><br><span class="text-slate-600">${em.avance}</span><div class="mt-1">${imgHtml}</div></div>`; 
+                    html += `<div style="padding:14px; border:1px solid #bfdbfe; border-radius:12px; background:#eff6ff; margin-bottom:12px;"><b>⚡ ${usr.nombre} - ${em.cliente} (Emergencia)</b><br><span style="color:#475569; font-weight:500;">${em.avance}</span><div style="margin-top:10px;">${imgHtml}</div></div>`; 
                 });
             });
             grid.innerHTML = html || "Sin registros o evidencias para el día de hoy.";
