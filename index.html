@@ -18,7 +18,22 @@
         @media print {
             body * { visibility: hidden; }
             #modal-evidencias, #modal-evidencias * { visibility: visible; }
-            #modal-evidencias { position: absolute; left: 0; top: 0; width: 100%; height: auto; background: white !important; box-shadow: none !important; }
+            #modal-evidencias { 
+                position: absolute !important; 
+                left: 0 !important; 
+                top: 0 !important; 
+                width: 100% !important; 
+                height: auto !important; 
+                max-height: none !important;
+                background: white !important; 
+                box-shadow: none !important; 
+                border: none !important;
+                padding: 0 !important;
+            }
+            #contenedor-grid-evidencias {
+                max-height: none !important;
+                overflow: visible !important;
+            }
             .no-print { display: none !important; }
         }
     </style>
@@ -169,20 +184,20 @@
 
     <!-- MODAL BITÁCORA Y PDF -->
     <div id="modal-evidencias" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 hidden">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-3xl w-full p-6 space-y-4 max-h-[85vh] flex flex-col border border-slate-100">
-            <div class="flex justify-between items-center border-b pb-3">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full p-8 space-y-4 max-h-[85vh] flex flex-col border border-slate-100">
+            <div class="flex justify-between items-center border-b pb-4">
                 <div>
-                    <h3 class="font-black text-base text-slate-900 flex items-center gap-2"><i class="fa-solid fa-book-bookmark text-emerald-600"></i> Bitácora y Evidencias Fotográficas</h3>
-                    <p class="text-[11px] text-slate-500 font-medium">Reporte oficial de campo verificado - Mano Amiga</p>
+                    <h3 class="font-black text-lg text-slate-900 flex items-center gap-2"><i class="fa-solid fa-book-bookmark text-emerald-600"></i> Bitácora y Evidencias Fotográficas</h3>
+                    <p class="text-xs text-slate-500 font-medium">Reporte oficial de campo verificado - Mano Amiga</p>
                 </div>
-                <div class="flex items-center gap-2.5">
-                    <button onclick="window.print()" class="no-print bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5">
+                <div class="flex items-center gap-3">
+                    <button onclick="window.print()" class="no-print bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5">
                         <i class="fa-solid fa-file-pdf"></i> Guardar como PDF
                     </button>
-                    <button onclick="cerrarModalEvidencias()" class="no-print text-slate-400 hover:text-slate-700 text-lg px-2"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="cerrarModalEvidencias()" class="no-print text-slate-400 hover:text-slate-700 text-xl px-2"><i class="fa-solid fa-xmark"></i></button>
                 </div>
             </div>
-            <div id="contenedor-grid-evidencias" class="flex-1 overflow-y-auto space-y-3 p-1 text-xs"></div>
+            <div id="contenedor-grid-evidencias" class="flex-1 overflow-y-auto space-y-4 p-2 text-sm"></div>
         </div>
     </div>
 
@@ -506,13 +521,13 @@
             let html = "";
             (target.emergentes || []).forEach((em, emIndex) => {
                 let imgHtml = "";
-                (em.fotos || []).forEach(url => { imgHtml += `<img src="${url}" class="w-12 h-12 object-cover rounded-xl border shadow-sm inline-block mr-1">`; });
+                (em.fotos || []).forEach(url => { imgHtml += `<img src="${url}" crossorigin="anonymous" class="w-12 h-12 object-cover rounded-xl border shadow-sm inline-block mr-1">`; });
                 let botonBorrar = rolActual === "asesor" ? `<button onclick="borrarEmergente(${emIndex})" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-lg text-[10px] font-bold float-right shadow"><i class="fa-solid fa-trash"></i></button>` : "";
                 html += `<div class="p-3 bg-amber-50/80 border border-amber-200 rounded-2xl text-xs mb-3 shadow-sm"><div class="flex items-center justify-between mb-1"><b><i class="fa-solid fa-bolt text-amber-500"></i> Emergencia: ${em.cliente}</b> ${botonBorrar}</div><p class="text-slate-600 font-medium">${em.avance}</p><div class="mt-2 flex flex-wrap gap-1">${imgHtml}</div></div>`;
             });
             (target.puntos || []).forEach((p, idx) => {
                 let imgHtml = "";
-                (p.fotos || []).forEach(url => { imgHtml += `<img src="${url}" class="w-12 h-12 object-cover rounded-xl border shadow-sm inline-block mr-1">`; });
+                (p.fotos || []).forEach(url => { imgHtml += `<img src="${url}" crossorigin="anonymous" class="w-12 h-12 object-cover rounded-xl border shadow-sm inline-block mr-1">`; });
                 let badgeColor = p.estado === "completado" ? "bg-emerald-100 text-emerald-800" : (p.estado === "ausente" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600");
                 html += `<div class="p-3 bg-white border border-slate-200 rounded-2xl text-xs flex justify-between items-center mb-3 shadow-sm">
                     <div class="space-y-1">
@@ -625,17 +640,17 @@
                     if(p.estado !== "pendiente") {
                         let imgHtml = "";
                         (p.fotos || []).forEach(url => { 
-                            imgHtml += `<a href="${url}" target="_blank"><img src="${url}" style="width:110px; height:110px; object-fit:cover; border-radius:10px; border:2px solid #e2e8f0; display:inline-block; margin-right:6px; margin-bottom:6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"></a>`; 
+                            imgHtml += `<img src="${url}" crossorigin="anonymous" style="width:140px; height:140px; object-fit:cover; border-radius:12px; border:2px solid #cbd5e1; display:inline-block; margin-right:8px; margin-bottom:8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">`; 
                         });
-                        html += `<div style="padding:14px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; margin-bottom:12px;"><b>${usr.nombre} - ${p.cliente}</b> (${p.estado})<br><span style="color:#475569; font-weight:500;">${p.avance}</span><div style="margin-top:10px;">${imgHtml}</div></div>`; 
+                        html += `<div style="padding:16px; border:2px solid #e2e8f0; border-radius:16px; background:#f8fafc; margin-bottom:16px; page-break-inside: avoid;"><b>${usr.nombre} - ${p.cliente}</b> (${p.estado})<br><span style="color:#475569; font-weight:500; font-size:14px;">${p.avance}</span><div style="margin-top:12px;">${imgHtml}</div></div>`; 
                     }
                 });
                 if(usr.emergentes) usr.emergentes.forEach(em => { 
                     let imgHtml = "";
                     (em.fotos || []).forEach(url => { 
-                        imgHtml += `<a href="${url}" target="_blank"><img src="${url}" style="width:110px; height:110px; object-fit:cover; border-radius:10px; border:2px solid #bfdbfe; display:inline-block; margin-right:6px; margin-bottom:6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"></a>`; 
+                        imgHtml += `<img src="${url}" crossorigin="anonymous" style="width:140px; height:140px; object-fit:cover; border-radius:12px; border:2px solid #93c5fd; display:inline-block; margin-right:8px; margin-bottom:8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">`; 
                     });
-                    html += `<div style="padding:14px; border:1px solid #bfdbfe; border-radius:12px; background:#eff6ff; margin-bottom:12px;"><b>⚡ ${usr.nombre} - ${em.cliente} (Emergencia)</b><br><span style="color:#475569; font-weight:500;">${em.avance}</span><div style="margin-top:10px;">${imgHtml}</div></div>`; 
+                    html += `<div style="padding:16px; border:2px solid #bfdbfe; border-radius:16px; background:#eff6ff; margin-bottom:16px; page-break-inside: avoid;"><b>⚡ ${usr.nombre} - ${em.cliente} (Emergencia)</b><br><span style="color:#475569; font-weight:500; font-size:14px;">${em.avance}</span><div style="margin-top:12px;">${imgHtml}</div></div>`; 
                 });
             });
             grid.innerHTML = html || "Sin registros o evidencias para el día de hoy.";
