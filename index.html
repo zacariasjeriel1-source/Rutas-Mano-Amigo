@@ -167,6 +167,7 @@
 
     #mapSection { display: none; }
     .map-card { padding: 10px; border-radius: var(--radius-xl); margin-bottom: 12px; }
+    #map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.92) saturate(.8); }
     #map { width: 100%; height: 380px; border-radius: var(--radius-lg); background: #090f1d; z-index: 1; }
     @media (min-width: 768px) { #map { height: 480px; } }
 
@@ -1339,11 +1340,14 @@
     function initMapa() {
       if (!window.L || map) return;
       map = L.map('map').setView([oficina.lat, oficina.lng], 13);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-        subdomains: 'abcd',
+      const capa = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 19
       }).addTo(map);
+      let avisado = false;
+      capa.on('tileerror', () => {
+        if (!avisado) { avisado = true; toast('Algunos mapas no cargaron. Revisa tu conexión.'); }
+      });
       mapLayer = L.layerGroup().addTo(map);
     }
 
