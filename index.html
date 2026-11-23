@@ -1,569 +1,1006 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mano Amiga - Control Diario</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Supabase JS Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>RutaMóvil · Gestión de Campo</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-deep: #060911;
+      --glass-surface: rgba(18, 25, 42, 0.56);
+      --glass-elevated: rgba(28, 38, 62, 0.72);
+      --glass-input: rgba(10, 15, 28, 0.65);
+      --border-glass: rgba(255, 255, 255, 0.13);
+      --border-specular: rgba(255, 255, 255, 0.28);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-deep);
+      background-image:
+        radial-gradient(circle at 12% 10%, rgba(56, 189, 248, 0.16), transparent 42%),
+        radial-gradient(circle at 88% 18%, rgba(16, 185, 129, 0.13), transparent 40%),
+        radial-gradient(circle at 50% 85%, rgba(99, 102, 241, 0.12), transparent 50%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 16px 14px 110px;
+    }
+
+    .container {
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    /* Superficies Liquid Glass */
+    .glass-card {
+      background: var(--glass-surface);
+      -webkit-backdrop-filter: blur(18px) saturate(155%);
+      backdrop-filter: blur(18px) saturate(155%);
+      border: 1px solid var(--border-glass);
+      border-top-color: var(--border-specular);
+      border-radius: var(--radius-xl);
+      box-shadow:
+        0 14px 34px rgba(0, 0, 0, 0.48),
+        inset 0 1px 0 rgba(255, 255, 255, 0.09);
+    }
+
+    .glass-pill {
+      background: var(--glass-elevated);
+      -webkit-backdrop-filter: blur(12px) saturate(140%);
+      backdrop-filter: blur(12px) saturate(140%);
+      border: 1px solid var(--border-glass);
+      border-top-color: var(--border-specular);
+      border-radius: 999px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Header */
+    header {
+      padding: 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 30%, #7dd3fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .gps-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-main);
+      transition: transform 0.15s ease;
+    }
+
+    .gps-badge:active {
+      transform: scale(0.96);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-amber);
+      box-shadow: 0 0 10px var(--accent-amber);
+    }
+
+    .dot.ok {
+      background: var(--accent-emerald);
+      box-shadow: 0 0 10px var(--accent-emerald);
+    }
+
+    .dot.err {
+      background: var(--accent-rose);
+      box-shadow: 0 0 10px var(--accent-rose);
+    }
+
+    .gps-detail {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      background: rgba(0, 0, 0, 0.25);
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Barra de herramientas */
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .btn-glass {
+      background: var(--glass-elevated);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-glass);
+      border-top-color: var(--border-specular);
+      color: var(--text-main);
+      padding: 12px 14px;
+      border-radius: var(--radius-lg);
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+      transition: transform 0.15s ease, background 0.2s ease;
+    }
+
+    .btn-glass:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.32), rgba(14, 165, 233, 0.18));
+      border-color: rgba(56, 189, 248, 0.45);
+      color: #e0f2fe;
+    }
+
+    .btn-emerald {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.32), rgba(5, 150, 105, 0.18));
+      border-color: rgba(16, 185, 129, 0.45);
+      color: #d1fae5;
+    }
+
+    /* Resumen KPI */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .stat-box {
+      padding: 12px 10px;
+      text-align: center;
+      border-radius: var(--radius-lg);
+    }
+
+    .stat-box span {
+      display: block;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .stat-box small {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    /* Tarjetas de visitas */
+    .visit-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .visit-card {
+      padding: 16px;
+      position: relative;
+      transition: transform 0.2s ease;
+    }
+
+    .visit-card.completed {
+      border-color: rgba(16, 185, 129, 0.35);
+    }
+
+    .visit-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .visit-order {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.2);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #7dd3fc;
+      margin-right: 6px;
+    }
+
+    .visit-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      font-size: 0.68rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .tag-emergente {
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fde68a;
+    }
+
+    .tag-done {
+      background: rgba(16, 185, 129, 0.22);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: #a7f3d0;
+    }
+
+    .visit-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .reorder-controls {
+      display: flex;
+      gap: 4px;
+    }
+
+    .btn-mini {
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #e2e8f0;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-mini:active {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .visit-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .photo-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .photo-thumb {
+      aspect-ratio: 1;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px dashed rgba(255, 255, 255, 0.18);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .photo-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Barra inferior flotante */
+    .bottom-dock {
+      position: fixed;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 28px);
+      max-width: 520px;
+      padding: 10px 12px;
+      display: flex;
+      gap: 10px;
+      z-index: 50;
+    }
+
+    .bottom-dock button {
+      flex: 1;
+    }
+
+    /* Modales Liquid Glass */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 6, 14, 0.72);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 14px;
+      z-index: 100;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-sheet {
+      width: 100%;
+      max-width: 520px;
+      padding: 20px;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: slideUp 0.22s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(24px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .modal-header h2 {
+      font-size: 1.08rem;
+      font-weight: 700;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 11px 13px;
+      border-radius: var(--radius-md);
+      background: var(--glass-input);
+      border: 1px solid var(--border-glass);
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .form-control:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .photo-grid-modal {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .photo-slot {
+      aspect-ratio: 4/3;
+      border-radius: var(--radius-md);
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px dashed rgba(255, 255, 255, 0.25);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      overflow: hidden;
+      position: relative;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+    }
+
+    .photo-slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .toast {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 16px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      z-index: 200;
+      display: none;
+      max-width: 90%;
+      text-align: center;
+    }
+  </style>
 </head>
-<body class="bg-slate-100 font-sans text-slate-800 antialiased">
+<body>
+  <div id="toast" class="glass-pill toast"></div>
 
-    <!-- LOGIN DIRECTO POR PIN -->
-    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border">
-            <div class="text-center mb-6">
-                <div class="inline-flex items-center justify-center w-14 h-14 bg-emerald-600 text-white rounded-2xl shadow mb-3 text-xl">
-                    <i class="fa-solid fa-motorcycle"></i>
-                </div>
-                <h1 class="text-xl font-bold text-slate-900">Mano Amiga</h1>
-                <p class="text-xs text-slate-500">Ingrese su PIN personal</p>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-600 mb-1 text-center">PIN de Acceso</label>
-                    <input type="password" id="login-pass" maxlength="6" placeholder="••••" class="w-full text-center text-2xl tracking-widest px-3 py-3 rounded-xl border bg-slate-50 font-bold">
-                </div>
-                <button onclick="intentarLogin()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl shadow transition text-sm">
-                    Iniciar Sesión
-                </button>
-            </div>
+  <div class="container">
+    <header class="glass-card">
+      <div class="header-top">
+        <div class="brand">
+          <h1>RutaMóvil</h1>
+          <p>Seguimiento de Campo · Microfinanzas</p>
         </div>
+        <button id="btnRefreshGps" class="glass-pill gps-badge" onclick="obtenerUbicacion()">
+          <span id="gpsDot" class="dot"></span>
+          <span id="gpsStatusText">Ubicando...</span>
+        </button>
+      </div>
+      <div class="gps-detail">
+        <span id="gpsCoordsText">Sin coordenadas fijadas aún</span>
+        <span id="gpsAccuracyText" style="color:#7dd3fc;font-weight:600;">--</span>
+      </div>
+    </header>
+
+    <div class="stats-row">
+      <div class="glass-card stat-box">
+        <span id="statTotal">0</span>
+        <small>Visitas hoy</small>
+      </div>
+      <div class="glass-card stat-box">
+        <span id="statDone" style="color:#6ee7b7;">0</span>
+        <small>Completadas</small>
+      </div>
+      <div class="glass-card stat-box">
+        <span id="statPending" style="color:#fde68a;">0</span>
+        <small>Pendientes</small>
+      </div>
     </div>
 
-    <!-- APP CONTAINER -->
-    <div id="app-container" class="min-h-screen flex flex-col hidden">
-        <header class="bg-slate-900 text-white px-4 py-3 flex justify-between items-center shadow">
-            <div class="flex items-center gap-2">
-                <div class="bg-emerald-600 p-2 rounded-lg"><i class="fa-solid fa-satellite-dish"></i></div>
-                <h2 class="font-bold text-sm" id="header-title">Control Diario</h2>
-            </div>
-            <div class="flex items-center gap-2">
-                <button onclick="abrirModalEvidencias()" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow">Bitácora</button>
-                <span id="user-badge" class="bg-slate-800 text-emerald-400 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700"></span>
-                <button onclick="cerrarSesion()" class="bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg text-xs"><i class="fa-solid fa-power-off"></i></button>
-            </div>
-        </header>
-
-        <div class="flex-1 flex flex-col lg:flex-row">
-            <!-- PANEL LATERAL -->
-            <aside class="w-full lg:w-[400px] bg-white border-r flex flex-col z-20 shadow">
-                <div id="admin-selector-box" class="p-3 bg-slate-50 border-b hidden space-y-2">
-                    <label class="block text-[11px] font-semibold text-slate-600">Monitorear Asesor:</label>
-                    <select id="select-vista-asesor" onchange="cambiarVistaAdmin()" class="w-full text-xs p-2 rounded border bg-white font-medium">
-                        <option value="todos">🌍 Ver Todos</option>
-                    </select>
-                    <div id="admin-lock-box" class="pt-1">
-                        <button id="btn-toggle-cerrar" onclick="toggleCerrarEdicionRuta()" class="w-full bg-amber-600 text-white font-semibold py-1.5 rounded text-xs shadow">
-                            🔒 Cerrar Edición de Ruta
-                        </button>
-                    </div>
-                </div>
-
-                <!-- PANEL PARA ASESOR -->
-                <div class="p-4 border-b space-y-3" id="asesor-controls-box">
-                    <h3 class="font-bold text-xs uppercase text-slate-700"><i class="fa-solid fa-route text-emerald-600"></i> Colocar Mis Coordenadas (Ruta)</h3>
-                    <textarea id="input-coordenadas" rows="3" class="w-full text-xs p-2 rounded border font-mono bg-slate-50" placeholder="14.9625, -91.1862, Cliente A&#10;14.9650, -91.1890, Cliente B"></textarea>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="asesorGuardarRuta()" class="bg-emerald-600 text-white font-semibold py-2 rounded text-xs shadow">Guardar Mi Ruta</button>
-                        <button onclick="asesorLimpiarRuta()" class="bg-red-600 text-white font-semibold py-2 rounded text-xs shadow">Limpiar Ruta</button>
-                    </div>
-                    <p id="lbl-estado-edicion" class="text-[10px] text-slate-500 font-semibold text-center"></p>
-                </div>
-
-                <div id="asesor-emergente-box" class="p-3 bg-emerald-50 border-b hidden">
-                    <button onclick="abrirModalVisitaEmergente()" class="w-full bg-blue-600 text-white font-semibold py-2.5 rounded text-xs shadow">
-                        ⚡ Registrar Visita Emergente
-                    </button>
-                </div>
-
-                <div class="px-4 py-2 bg-slate-900 text-white text-xs">
-                    <div class="flex justify-between font-bold"><span class="text-slate-300">GPS En Vivo:</span> <span id="txt-ultima-act" class="text-emerald-400 font-mono">Activo</span></div>
-                    <div class="font-mono text-[10px] text-slate-400" id="txt-coords-envivo">Esperando señal...</div>
-                </div>
-
-                <div class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50" id="lista-paradas"></div>
-            </aside>
-
-            <!-- MAPA -->
-            <main class="flex-1 relative flex flex-col">
-                <div class="absolute top-3 right-3 z-[400] bg-slate-900/90 text-white px-4 py-2 rounded-xl shadow border border-slate-700 flex items-center gap-4 text-xs">
-                    <div><b>Vel:</b> <span id="waze-speed" class="text-emerald-400">0.0</span> km/h</div>
-                    <button id="btn-gps-toggle" onclick="activarGPSReal()" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-semibold shadow">
-                        Activar GPS
-                    </button>
-                </div>
-                <div id="map" class="flex-1 w-full h-[450px] lg:h-full z-10"></div>
-            </main>
-        </div>
+    <div class="toolbar">
+      <button class="btn-glass btn-primary" onclick="abrirModalNuevaVisita()">
+        + Visita Emergente
+      </button>
+      <button class="btn-glass" onclick="ordenarRutaAutomatica()">
+        ⚡ Ordenar por GPS
+      </button>
     </div>
 
-    <!-- MODAL VISITA -->
-    <div id="modal-visita" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-3">
-            <h3 class="font-bold text-sm text-slate-900"><i class="fa-solid fa-camera text-emerald-600"></i> Registrar Visita con Fotos</h3>
+    <main id="visitList" class="visit-list"></main>
+  </div>
+
+  <div class="glass-card bottom-dock">
+    <button class="btn-glass" onclick="reiniciarDia()">Limpiar Día</button>
+    <button class="btn-glass btn-emerald" onclick="generarReportePDF()">📄 Reporte PDF</button>
+  </div>
+
+  <!-- Modal Nueva Visita -->
+  <div id="modalNueva" class="modal-backdrop">
+    <div class="glass-card modal-sheet">
+      <div class="modal-header">
+        <h2>Registrar Visita</h2>
+        <button class="btn-mini" onclick="cerrarModal('modalNueva')">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Nombre del Cliente</label>
+        <input id="inpCliente" class="form-control" type="text" placeholder="Ej. Juan Pérez" />
+      </div>
+      <div class="form-group">
+        <label>Dirección / Comunidad / Zona</label>
+        <input id="inpDireccion" class="form-control" type="text" placeholder="Ej. Cantón Chitatul, Zona 2" />
+      </div>
+      <div class="form-group">
+        <label>Motivo de Gestión</label>
+        <select id="inpTipo" class="form-control">
+          <option value="Cobro Diario">Cobro Diario</option>
+          <option value="Verificación de Crédito">Verificación de Crédito</option>
+          <option value="Visita Emergente">Visita Emergente</option>
+          <option value="Renovación">Renovación</option>
+        </select>
+      </div>
+      <button class="btn-glass btn-primary" style="width:100%;margin-top:8px;" onclick="guardarNuevaVisita()">
+        Agregar a la Ruta
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Documentar Visita (Check-in + 4 Fotos) -->
+  <div id="modalDoc" class="modal-backdrop">
+    <div class="glass-card modal-sheet">
+      <div class="modal-header">
+        <h2 id="docTitulo">Documentar Visita</h2>
+        <button class="btn-mini" onclick="cerrarModal('modalDoc')">✕</button>
+      </div>
+      <p id="docSubtitulo" style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;"></p>
+
+      <div class="form-group">
+        <label>Observaciones / Resultado de Gestión</label>
+        <textarea id="inpNotas" class="form-control" rows="2" placeholder="Ej. Abono recibido, cliente localizado en negocio..."></textarea>
+      </div>
+
+      <label style="font-size:0.78rem;color:var(--text-muted);">Evidencia Fotográfica (4 fotos)</label>
+      <div class="photo-grid-modal" id="photoGridModal"></div>
+      <input id="cameraInput" type="file" accept="image/*" capture="environment" style="display:none;" onchange="procesarFoto(event)" />
+
+      <button class="btn-glass btn-emerald" style="width:100%;margin-top:10px;" onclick="completarVisita()">
+        ✓ Guardar Check-in y Fotos
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'rutamovil_mano_amigo_v2';
+    let currentCoords = null;
+    let activeVisitId = null;
+    let activePhotoSlot = 0;
+    let tempPhotos = [null, null, null, null];
+
+    let visitas = cargarVisitas();
+
+    function cargarVisitas() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {
+        console.warn('Error leyendo storage:', e);
+      }
+      return [
+        {
+          id: 'v1',
+          cliente: 'María Elena Ajanel',
+          direccion: 'Zona 1, Mercado Central',
+          tipo: 'Cobro Diario',
+          lat: 15.0305,
+          lng: -91.1489,
+          completada: false,
+          horaCheckin: null,
+          coordsCheckin: null,
+          notas: '',
+          fotos: [null, null, null, null]
+        },
+        {
+          id: 'v2',
+          cliente: 'Carlos Humberto Tzul',
+          direccion: 'Salida a Chitatul',
+          tipo: 'Verificación de Crédito',
+          lat: 15.0412,
+          lng: -91.1421,
+          completada: false,
+          horaCheckin: null,
+          coordsCheckin: null,
+          notas: '',
+          fotos: [null, null, null, null]
+        }
+      ];
+    }
+
+    function guardarStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(visitas));
+      } catch (e) {
+        mostrarToast('Memoria llena: reduce fotos o genera el PDF ya.');
+      }
+    }
+
+    function mostrarToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => { t.style.display = 'none'; }, 3500);
+    }
+
+    // =========================================================
+    // SOLUCIÓN GPS ANTI-BLOQUEO (Doble intento con fallback)
+    // =========================================================
+    function obtenerUbicacion(silencioso = false) {
+      const dot = document.getElementById('gpsDot');
+      const status = document.getElementById('gpsStatusText');
+      const coordsEl = document.getElementById('gpsCoordsText');
+      const accEl = document.getElementById('gpsAccuracyText');
+
+      if (!('geolocation' in navigator)) {
+        dot.className = 'dot err';
+        status.textContent = 'Sin soporte GPS';
+        coordsEl.textContent = 'Este navegador no soporta geolocalización.';
+        return Promise.resolve(null);
+      }
+
+      if (!window.isSecureContext) {
+        dot.className = 'dot err';
+        status.textContent = 'Requiere HTTPS';
+        coordsEl.textContent = 'Abre la app en HTTPS para activar el GPS.';
+        return Promise.resolve(null);
+      }
+
+      dot.className = 'dot';
+      status.textContent = 'Buscando...';
+
+      const pedirPosicion = (altaPrecision, timeoutMs) =>
+        new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: altaPrecision,
+            timeout: timeoutMs,
+            maximumAge: 15000
+          });
+        });
+
+      // 1er intento: Alta precisión (6s). Si falla/tarda en techo, 2do intento: Red/WiFi (8s).
+      return pedirPosicion(true, 6000)
+        .catch(() => pedirPosicion(false, 8000))
+        .then((pos) => {
+          currentCoords = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            acc: Math.round(pos.coords.accuracy)
+          };
+          dot.className = 'dot ok';
+          status.textContent = 'GPS Activo';
+          coordsEl.textContent = `${currentCoords.lat.toFixed(5)}, ${currentCoords.lng.toFixed(5)}`;
+          accEl.textContent = `±${currentCoords.acc}m`;
+          if (!silencioso) mostrarToast('Ubicación actualizada');
+          return currentCoords;
+        })
+        .catch((err) => {
+          dot.className = 'dot err';
+          status.textContent = 'Error GPS';
+          let motivo = 'No se pudo obtener señal.';
+          if (err.code === 1) motivo = 'Permiso denegado en ajustes del navegador.';
+          if (err.code === 2) motivo = 'Señal GPS no disponible (sal a espacio abierto).';
+          if (err.code === 3) motivo = 'Tiempo agotado buscando satélites.';
+          coordsEl.textContent = motivo;
+          accEl.textContent = `Err ${err.code || ''}`;
+          if (!silencioso) mostrarToast(motivo);
+          return null;
+        });
+    }
+
+    function renderVisitas() {
+      const list = document.getElementById('visitList');
+      list.innerHTML = '';
+
+      let doneCount = 0;
+      visitas.forEach((v, idx) => {
+        if (v.completada) doneCount++;
+        const fotosTomadas = (v.fotos || []).filter(Boolean).length;
+
+        const card = document.createElement('div');
+        card.className = `glass-card visit-card ${v.completada ? 'completed' : ''}`;
+        card.innerHTML = `
+          <div class="visit-header">
             <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Seleccionar Fotos (Máx. 4)</label>
-                <input type="file" id="input-fotos" accept="image/*" multiple class="w-full text-xs border rounded p-2 file:bg-emerald-50 file:text-emerald-700 file:border-0 file:py-1 file:px-2 file:rounded">
+              <div class="visit-title">
+                <span class="visit-order">${idx + 1}</span>
+                <span>${v.cliente}</span>
+                ${v.tipo === 'Visita Emergente' ? '<span class="tag tag-emergente">Emergente</span>' : ''}
+                ${v.completada ? '<span class="tag tag-done">✓ Completada</span>' : ''}
+              </div>
+              <div class="visit-meta">
+                📍 ${v.direccion} · <strong>${v.tipo}</strong>
+                ${v.horaCheckin ? `<br>🕒 Check-in: ${v.horaCheckin} (${v.coordsCheckin || 'Sin GPS'})` : ''}
+                ${v.notas ? `<br>📝 ${v.notas}` : ''}
+              </div>
             </div>
-            <textarea id="input-avance" rows="2" class="w-full text-xs p-2.5 rounded border" placeholder="Observaciones de la visita..."></textarea>
-            <div class="grid grid-cols-2 gap-2 pt-2">
-                <button onclick="guardarVisitaExitosa()" class="bg-emerald-600 text-white font-semibold py-2.5 rounded text-xs shadow">Guardar Visita</button>
-                <button onclick="marcarIncidenciaAusente()" class="bg-amber-500 text-white font-semibold py-2.5 rounded text-xs shadow">Ausente ⚠</button>
+            <div class="reorder-controls">
+              <button class="btn-mini" title="Subir" onclick="moverVisita(${idx}, -1)">↑</button>
+              <button class="btn-mini" title="Bajar" onclick="moverVisita(${idx}, 1)">↓</button>
             </div>
+          </div>
+
+          <div class="photo-strip">
+            ${[0, 1, 2, 3].map(i => `
+              <div class="photo-thumb">
+                ${v.fotos && v.fotos[i] ? `<img src="${v.fotos[i]}" alt="Foto ${i+1}">` : `F${i+1}`}
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="visit-actions">
+            <button class="btn-glass" onclick="abrirModalDoc('${v.id}')">
+              📷 ${v.completada ? 'Editar' : 'Check-in'} (${fotosTomadas}/4)
+            </button>
+            <button class="btn-glass" style="color:#fda4af;" onclick="eliminarVisita('${v.id}')">
+              Eliminar
+            </button>
+          </div>
+        `;
+        list.appendChild(card);
+      });
+
+      document.getElementById('statTotal').textContent = visitas.length;
+      document.getElementById('statDone').textContent = doneCount;
+      document.getElementById('statPending').textContent = visitas.length - doneCount;
+    }
+
+    function moverVisita(index, dir) {
+      const target = index + dir;
+      if (target < 0 || target >= visitas.length) return;
+      const temp = visitas[index];
+      visitas[index] = visitas[target];
+      visitas[target] = temp;
+      guardarStorage();
+      renderVisitas();
+    }
+
+    async function ordenarRutaAutomatica() {
+      const coords = currentCoords || await obtenerUbicacion(true);
+      if (!coords) {
+        mostrarToast('Activa el GPS para ordenar por cercanía.');
+        return;
+      }
+
+      const dist = (a, b) => {
+        if (!a.lat || !a.lng) return 999999;
+        const dLat = a.lat - b.lat;
+        const dLng = a.lng - b.lng;
+        return dLat * dLat + dLng * dLng;
+      };
+
+      const pendientes = visitas.filter(v => !v.completada);
+      const completadas = visitas.filter(v => v.completada);
+
+      pendientes.sort((a, b) => dist(a, coords) - dist(b, coords));
+      visitas = [...completadas, ...pendientes];
+      guardarStorage();
+      renderVisitas();
+      mostrarToast('Ruta reordenada por cercanía GPS');
+    }
+
+    function abrirModalNuevaVisita() {
+      document.getElementById('inpCliente').value = '';
+      document.getElementById('inpDireccion').value = '';
+      document.getElementById('modalNueva').classList.add('open');
+    }
+
+    function cerrarModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    function guardarNuevaVisita() {
+      const cliente = document.getElementById('inpCliente').value.trim();
+      const direccion = document.getElementById('inpDireccion').value.trim();
+      const tipo = document.getElementById('inpTipo').value;
+
+      if (!cliente) {
+        mostrarToast('Escribe el nombre del cliente.');
+        return;
+      }
+
+      visitas.push({
+        id: 'v_' + Date.now(),
+        cliente,
+        direccion: direccion || 'Sin dirección especificada',
+        tipo,
+        lat: currentCoords ? currentCoords.lat : null,
+        lng: currentCoords ? currentCoords.lng : null,
+        completada: false,
+        horaCheckin: null,
+        coordsCheckin: null,
+        notas: '',
+        fotos: [null, null, null, null]
+      });
+
+      guardarStorage();
+      renderVisitas();
+      cerrarModal('modalNueva');
+      mostrarToast('Visita agregada a la ruta');
+    }
+
+    function abrirModalDoc(id) {
+      const v = visitas.find(item => item.id === id);
+      if (!v) return;
+      activeVisitId = id;
+      tempPhotos = [...(v.fotos || [null, null, null, null])];
+      document.getElementById('docTitulo').textContent = v.cliente;
+      document.getElementById('docSubtitulo').textContent = `${v.direccion} · ${v.tipo}`;
+      document.getElementById('inpNotas').value = v.notas || '';
+      renderPhotoGridModal();
+      document.getElementById('modalDoc').classList.add('open');
+    }
+
+    function renderPhotoGridModal() {
+      const grid = document.getElementById('photoGridModal');
+      const etiquetas = ['1. Fachada / Negocio', '2. Cliente / Gestión', '3. Documento / Garantía', '4. Entorno / Calle'];
+      grid.innerHTML = etiquetas.map((label, i) => `
+        <div class="photo-slot" onclick="seleccionarFoto(${i})">
+          ${tempPhotos[i]
+            ? `<img src="${tempPhotos[i]}" alt="${label}">`
+            : `<span style="font-size:1.3rem;">📷</span><span>${label}</span>`}
         </div>
-    </div>
+      `).join('');
+    }
 
-    <!-- MODAL EMERGENTE -->
-    <div id="modal-emergente" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-3">
-            <h3 class="font-bold text-sm text-slate-900"><i class="fa-solid fa-bolt text-blue-600"></i> Visita Emergente con Fotos</h3>
-            <input type="text" id="input-emergente-nombre" placeholder="Nombre del Cliente" class="w-full text-xs p-2.5 rounded border">
-            <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Seleccionar Fotos (Máx. 4)</label>
-                <input type="file" id="input-fotos-emergente" accept="image/*" multiple class="w-full text-xs border rounded p-2 file:bg-blue-50 file:text-blue-700 file:border-0 file:py-1 file:px-2 file:rounded">
-            </div>
-            <textarea id="input-emergente-avance" rows="2" class="w-full text-xs p-2.5 rounded border" placeholder="Motivo de la emergencia..."></textarea>
-            <button onclick="guardarVisitaEmergenteReal()" class="w-full bg-blue-600 text-white font-semibold py-2.5 rounded text-xs shadow">Guardar Emergencia</button>
-        </div>
-    </div>
+    function seleccionarFoto(slotIndex) {
+      activePhotoSlot = slotIndex;
+      const input = document.getElementById('cameraInput');
+      input.value = '';
+      input.click();
+    }
 
-    <!-- MODAL BITÁCORA -->
-    <div id="modal-evidencias" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-80 p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-xl max-w-3xl w-full p-5 space-y-3 max-h-[85vh] flex flex-col">
-            <div class="flex justify-between items-center border-b pb-2">
-                <h3 class="font-bold text-sm text-slate-900">Bitácora y Fotos de Hoy</h3>
-                <button onclick="cerrarModalEvidencias()" class="text-slate-400 text-lg"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div id="contenedor-grid-evidencias" class="flex-1 overflow-y-auto space-y-3 p-1 text-xs"></div>
-        </div>
-    </div>
+    // Compresión ligera en Canvas para evitar que el teléfono se congele con 4 fotos pesadas
+    function procesarFoto(event) {
+      const file = event.target.files[0];
+      if (!file) return;
 
-    <script>
-        const SUPABASE_URL = "https://lcqztstpefwlwrmkerau.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_YOLr5vJUSRUE13Ud403_RA_xmuR9FJQ";
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const AGENCIA_CENTRAL = { lat: 15.032100742090686, lng: -91.15299656594703 };
-
-        let usuarioActual = null, rolActual = null, vistaAdminSeleccionada = "todos";
-        let map = null, marcadoresAsesores = {}, polylinesAsesores = [];
-        let watchId = null, gpsIntervalLoop = null, paradasVisitandoIndex = null;
-        const COLORES_ASESORES = ["#2563eb", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4"];
-
-        const baseInicial = {
-            "1596": { id: "1596", nombre: "Administrador Central", pin: "1596", rol: "admin", color: "#1e293b", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] },
-            "4862": { id: "4862", nombre: "Gestor de Cartera", pin: "4862", rol: "admin", color: "#0f172a", lat: AGENCIA_CENTRAL.lat, lng: AGENCIA_CENTRAL.lng, historial: [] },
-            "1346": { id: "1346", nombre: "Asesor 1", pin: "1346", rol: "asesor", cerrado: false, color: "#2563eb", lat: null, lng: null, historial: [], puntos: [], emergentes: [] },
-            "7946": { id: "7946", nombre: "Asesor 2", pin: "7946", rol: "asesor", cerrado: false, color: "#10b981", lat: null, lng: null, historial: [], puntos: [], emergentes: [] }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_W = 800;
+          const scale = Math.min(1, MAX_W / img.width);
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          tempPhotos[activePhotoSlot] = canvas.toDataURL('image/jpeg', 0.72);
+          renderPhotoGridModal();
         };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
 
-        let asesoresDB = baseInicial;
+    async function completarVisita() {
+      const v = visitas.find(item => item.id === activeVisitId);
+      if (!v) return;
 
-        function limpiarDatosAntiguosDiarios() {
-            let fechaHoy = new Date().toLocaleDateString();
-            Object.keys(asesoresDB).forEach(pin => {
-                let usr = asesoresDB[pin];
-                if (usr && usr.rol === 'asesor') {
-                    if (usr.historial) {
-                        usr.historial = usr.historial.filter(item => Array.isArray(item) && item[2] === fechaHoy);
-                    }
-                    if (usr.emergentes) {
-                        usr.emergentes = usr.emergentes.filter(em => em.fecha && em.fecha.startsWith(fechaHoy));
-                    }
-                }
-            });
+      const coords = currentCoords || await obtenerUbicacion(true);
+      const ahora = new Date();
+      const horaStr = ahora.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
+
+      v.completada = true;
+      v.notas = document.getElementById('inpNotas').value.trim();
+      v.fotos = [...tempPhotos];
+      v.horaCheckin = horaStr;
+      if (coords) {
+        v.lat = coords.lat;
+        v.lng = coords.lng;
+        v.coordsCheckin = `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`;
+      }
+
+      guardarStorage();
+      renderVisitas();
+      cerrarModal('modalDoc');
+      mostrarToast('Check-in y evidencia guardados');
+    }
+
+    function eliminarVisita(id) {
+      visitas = visitas.filter(v => v.id !== id);
+      guardarStorage();
+      renderVisitas();
+    }
+
+    function reiniciarDia() {
+      if (!confirm('¿Limpiar todas las visitas de hoy?')) return;
+      visitas = [];
+      guardarStorage();
+      renderVisitas();
+    }
+
+    function generarReportePDF() {
+      if (!window.jspdf) {
+        mostrarToast('Cargando librería PDF, intenta en un segundo...');
+        return;
+      }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const fecha = new Date().toLocaleDateString('es-GT');
+
+      doc.setFontSize(16);
+      doc.text('REPORTE DIARIO DE RUTA - MICROFINANZAS', 14, 18);
+      doc.setFontSize(10);
+      doc.text(`Fecha: ${fecha}   |   Total visitas: ${visitas.length}`, 14, 25);
+
+      let y = 35;
+      visitas.forEach((v, idx) => {
+        if (y > 240) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.text(`${idx + 1}. ${v.cliente} [${v.completada ? 'COMPLETADA' : 'PENDIENTE'}]`, 14, y);
+        y += 5;
+
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(9);
+        doc.text(`Tipo: ${v.tipo} | Dirección: ${v.direccion}`, 14, y);
+        y += 5;
+        doc.text(`Check-in: ${v.horaCheckin || 'N/A'} | GPS: ${v.coordsCheckin || 'Sin registro'}`, 14, y);
+        y += 5;
+        if (v.notas) {
+          doc.text(`Notas: ${v.notas}`, 14, y);
+          y += 5;
         }
 
-        async function sincronizarDesdeSupabase() {
+        const fotosValidas = (v.fotos || []).filter(Boolean);
+        if (fotosValidas.length > 0) {
+          let xImg = 14;
+          fotosValidas.forEach((fotoBase64) => {
             try {
-                let { data } = await supabaseClient.from('sistema_flota').select('*').eq('id', 'config_global').maybeSingle();
-                if (data && data.contenido) {
-                    asesoresDB = data.contenido;
-                    limpiarDatosAntiguosDiarios();
-                } else {
-                    await supabaseClient.from('sistema_flota').upsert({ id: 'config_global', contenido: baseInicial });
-                }
-            } catch (e) { console.warn("Modo local activo"); }
-            if (usuarioActual && asesoresDB[usuarioActual.id]) usuarioActual = asesoresDB[usuarioActual.id];
-            if (rolActual === "admin") {
-                poblarSelectVistaAdmin();
-                actualizarBotonCerrarEdicionUI();
-            }
-            renderizarPanelControlesSegunRol();
-            renderizarListaParadas();
-            actualizarDibujoRutaMapa();
+              doc.addImage(fotoBase64, 'JPEG', xImg, y, 42, 32);
+              xImg += 46;
+            } catch (e) {}
+          });
+          y += 38;
+        } else {
+          y += 4;
         }
+      });
 
-        setTimeout(() => { sincronizarDesdeSupabase(); }, 500);
+      doc.save(`Reporte_Ruta_${fecha.replace(/\//g, '-')}.pdf`);
+      mostrarToast('Reporte PDF descargado');
+    }
 
-        async function guardarEnSupabase() {
-            try {
-                await supabaseClient.from('sistema_flota').upsert({ id: 'config_global', contenido: asesoresDB });
-            } catch (e) { console.warn(e); }
-        }
-
-        function intentarLogin() {
-            let pass = document.getElementById("login-pass").value.trim();
-            let cuentaEncontrada = null;
-            Object.keys(asesoresDB).forEach(key => {
-                if (asesoresDB[key].pin === pass) {
-                    cuentaEncontrada = asesoresDB[key];
-                }
-            });
-
-            if (!cuentaEncontrada) {
-                Object.keys(baseInicial).forEach(key => {
-                    if (baseInicial[key].pin === pass) {
-                        cuentaEncontrada = baseInicial[key];
-                    }
-                });
-            }
-
-            if (!cuentaEncontrada) {
-                alert("PIN incorrecto. Intente de nuevo.");
-                return;
-            }
-
-            rolActual = cuentaEncontrada.rol;
-            usuarioActual = cuentaEncontrada;
-            document.getElementById("login-screen").classList.add("hidden");
-            document.getElementById("app-container").classList.remove("hidden");
-            
-            document.getElementById("user-badge").innerText = `${cuentaEncontrada.nombre} (${rolActual.toUpperCase()})`;
-
-            renderizarPanelControlesSegunRol();
-
-            setTimeout(() => { 
-                inicializarMapaLeaflet(); 
-                renderizarListaParadas(); 
-                if (rolActual === "asesor") activarGPSReal(); 
-            }, 200);
-        }
-
-        function renderizarPanelControlesSegunRol() {
-            if (rolActual === "admin") {
-                document.getElementById("admin-selector-box").style.display = "block";
-                document.getElementById("asesor-controls-box").style.display = "none";
-                document.getElementById("asesor-emergente-box").style.display = "none";
-                poblarSelectVistaAdmin();
-                actualizarBotonCerrarEdicionUI();
-            } else {
-                document.getElementById("admin-selector-box").style.display = "none";
-                document.getElementById("asesor-controls-box").style.display = "block";
-                document.getElementById("asesor-emergente-box").style.display = "block";
-                
-                let asesorData = asesoresDB[usuarioActual.id];
-                if (asesorData && asesorData.cerrado) {
-                    document.getElementById("input-coordenadas").disabled = true;
-                    document.getElementById("lbl-estado-edicion").innerText = "🔒 Edición cerrada por el Gestor / Admin";
-                } else {
-                    document.getElementById("input-coordenadas").disabled = false;
-                    document.getElementById("lbl-estado-edicion").innerText = "✍ Puedes colocar y editar tu ruta";
-                }
-            }
-        }
-
-        function cerrarSesion() {
-            if (watchId) navigator.geolocation.clearWatch(watchId);
-            if (gpsIntervalLoop) clearInterval(gpsIntervalLoop);
-            document.getElementById("app-container").classList.add("hidden");
-            document.getElementById("login-screen").classList.remove("hidden");
-            document.getElementById("login-pass").value = "";
-        }
-
-        function poblarSelectVistaAdmin() {
-            const select = document.getElementById("select-vista-asesor");
-            select.innerHTML = `<option value="todos">🌍 Ver Todos</option>`;
-            Object.keys(asesoresDB).forEach(pin => {
-                let usr = asesoresDB[pin];
-                if (usr && usr.rol === "asesor") {
-                    select.innerHTML += `<option value="${pin}">${usr.nombre} ${usr.cerrado ? '🔒' : '🔓'}</option>`;
-                }
-            });
-        }
-
-        function cambiarVistaAdmin() {
-            vistaAdminSeleccionada = document.getElementById("select-vista-asesor").value;
-            actualizarBotonCerrarEdicionUI();
-            renderizarListaParadas();
-            actualizarDibujoRutaMapa();
-        }
-
-        function actualizarBotonCerrarEdicionUI() {
-            if (rolActual !== "admin") return;
-            const btn = document.getElementById("btn-toggle-cerrar");
-            if (vistaAdminSeleccionada === "todos") {
-                btn.style.display = "none";
-                return;
-            }
-            btn.style.display = "block";
-            let asesorObj = asesoresDB[vistaAdminSeleccionada];
-            if (asesorObj && asesorObj.cerrado) {
-                btn.innerText = "🔓 Abrir Edición de Ruta";
-                btn.className = "w-full bg-emerald-600 text-white font-semibold py-1.5 rounded text-xs shadow";
-            } else {
-                btn.innerText = "🔒 Cerrar Edición de Ruta";
-                btn.className = "w-full bg-amber-600 text-white font-semibold py-1.5 rounded text-xs shadow";
-            }
-        }
-
-        async function toggleCerrarEdicionRuta() {
-            if (rolActual !== "admin" || vistaAdminSeleccionada === "todos") return;
-            let asesorObj = asesoresDB[vistaAdminSeleccionada];
-            if (!asesorObj) return;
-
-            asesorObj.cerrado = !asesorObj.cerrado;
-            asesoresDB[vistaAdminSeleccionada] = asesorObj;
-            await guardarEnSupabase();
-            poblarSelectVistaAdmin();
-            actualizarBotonCerrarEdicionUI();
-            alert(asesorObj.cerrado ? "Ruta cerrada correctamente para el asesor." : "Ruta abierta para edición.");
-        }
-
-        function inicializarMapaLeaflet() {
-            if (!map) {
-                map = L.map('map').setView([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng], 14);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-                L.marker([AGENCIA_CENTRAL.lat, AGENCIA_CENTRAL.lng]).addTo(map).bindPopup("Agencia Central");
-            } else { map.invalidateSize(); }
-            actualizarDibujoRutaMapa();
-        }
-
-        function actualizarDibujoRutaMapa() {
-            if (!map) return;
-            polylinesAsesores.forEach(l => map.removeLayer(l));
-            polylinesAsesores = [];
-            let fechaHoy = new Date().toLocaleDateString();
-
-            let targetList = rolActual === "asesor" ? [usuarioActual] : (vistaAdminSeleccionada === "todos" ? Object.values(asesoresDB).filter(u => u.rol === "asesor") : [asesoresDB[vistaAdminSeleccionada]]);
-
-            targetList.forEach((usr, idx) => {
-                if (!usr) return;
-                let col = usr.color || COLORES_ASESORES[idx % COLORES_ASESORES.length];
-
-                if (usr.puntos) {
-                    usr.puntos.forEach((p, i) => {
-                        let m = L.marker([p.lat, p.lng]).addTo(map).bindPopup(`${i+1}. ${p.cliente} (${p.estado})`);
-                        polylinesAsesores.push(m);
-                    });
-                }
-                if (usr.emergentes) {
-                    usr.emergentes.forEach(em => {
-                        let m = L.marker([em.lat, em.lng]).addTo(map).bindPopup(`⚡ Emergencia: ${em.cliente}`);
-                        polylinesAsesores.push(m);
-                    });
-                }
-                if (usr.historial) {
-                    let pts = usr.historial.filter(item => Array.isArray(item) && item[2] === fechaHoy).map(item => [item[0], item[1]]);
-                    if (pts.length > 1) {
-                        let line = L.polyline(pts, { color: col, weight: 4 }).addTo(map);
-                        polylinesAsesores.push(line);
-                    }
-                }
-                if (usr.lat && usr.lng) {
-                    let iconoMoto = L.divIcon({
-                        className: 'custom-moto-icon',
-                        html: `<div style="background-color: ${col}; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.3); font-size: 14px;"><i class="fa-solid fa-motorcycle"></i></div>`,
-                        iconSize: [34, 34],
-                        iconAnchor: [17, 17]
-                    });
-
-                    if (marcadoresAsesores[usr.id]) {
-                        marcadoresAsesores[usr.id].setLatLng([usr.lat, usr.lng]);
-                        marcadoresAsesores[usr.id].setIcon(iconoMoto);
-                    } else {
-                        marcadoresAsesores[usr.id] = L.marker([usr.lat, usr.lng], { icon: iconoMoto }).addTo(map).bindPopup(usr.nombre);
-                    }
-                }
-            });
-        }
-
-        function activarGPSReal() {
-            if (rolActual !== "asesor") return;
-            if ("geolocation" in navigator) {
-                watchId = navigator.geolocation.watchPosition(pos => {
-                    let lat = pos.coords.latitude, lng = pos.coords.longitude;
-                    let fechaHoy = new Date().toLocaleDateString();
-                    document.getElementById("waze-speed").innerText = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(1) : "0.0";
-                    usuarioActual.lat = lat; usuarioActual.lng = lng;
-                    if (!usuarioActual.historial) usuarioActual.historial = [];
-                    usuarioActual.historial.push([lat, lng, fechaHoy]);
-                    asesoresDB[usuarioActual.id] = usuarioActual;
-                    guardarEnSupabase();
-                    actualizarDibujoRutaMapa();
-                    document.getElementById("txt-coords-envivo").innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-                }, null, { enableHighAccuracy: true });
-            }
-        }
-
-        async function asesorGuardarRuta() {
-            if (usuarioActual.cerrado) {
-                alert("El gestor ha cerrado la edición de tu ruta. No puedes modificarla.");
-                return;
-            }
-            let txt = document.getElementById("input-coordenadas").value.trim();
-            let pts = [];
-            txt.split("\n").forEach((l, i) => {
-                let p = l.split(/[,/\t|]+/);
-                if (p.length >= 2) pts.push({ lat: parseFloat(p[0]), lng: parseFloat(p[1]), cliente: p[2] ? p[2].trim() : `Cliente ${i+1}`, estado: "pendiente" });
-            });
-            if (pts.length === 0) { alert("Formato de coordenadas no válido"); return; }
-            usuarioActual.puntos = pts;
-            asesoresDB[usuarioActual.id] = usuarioActual;
-            await guardarEnSupabase();
-            alert("Ruta guardada correctamente");
-            document.getElementById("input-coordenadas").value = "";
-            renderizarListaParadas();
-            actualizarDibujoRutaMapa();
-        }
-
-        async function asesorLimpiarRuta() {
-            if (usuarioActual.cerrado) {
-                alert("El gestor ha cerrado la edición de tu ruta. No puedes modificarla.");
-                return;
-            }
-            if (confirm("¿Estás seguro de limpiar tu ruta?")) {
-                usuarioActual.puntos = [];
-                asesoresDB[usuarioActual.id] = usuarioActual;
-                await guardarEnSupabase();
-                renderizarListaParadas();
-                actualizarDibujoRutaMapa();
-                alert("Ruta limpiada");
-            }
-        }
-
-        function renderizarListaParadas() {
-            const contenedor = document.getElementById("lista-paradas");
-            let target = rolActual === "admin" ? (vistaAdminSeleccionada === "todos" ? null : asesoresDB[vistaAdminSeleccionada]) : usuarioActual;
-            
-            if (!target) {
-                contenedor.innerHTML = `<div class="p-3 text-xs text-slate-500">Selecciona un asesor en el panel superior para ver sus paradas.</div>`;
-                return;
-            }
-
-            let html = "";
-            (target.emergentes || []).forEach(em => {
-                let imgHtml = "";
-                (em.fotos || []).forEach(url => { imgHtml += `<img src="${url}" class="w-10 h-10 object-cover rounded border inline-block mr-1">`; });
-                html += `<div class="p-2.5 bg-blue-50 border border-blue-200 rounded text-xs mb-2"><b>⚡ Emergencia: ${em.cliente}</b><br>${em.avance}<div class="mt-1">${imgHtml}</div></div>`;
-            });
-            (target.puntos || []).forEach((p, idx) => {
-                let imgHtml = "";
-                (p.fotos || []).forEach(url => { imgHtml += `<img src="${url}" class="w-10 h-10 object-cover rounded border inline-block mr-1">`; });
-                html += `<div class="p-2.5 bg-white border rounded text-xs flex justify-between items-center mb-2 shadow-sm">
-                    <div><b>${idx+1}. ${p.cliente}</b><br><span class="text-[10px] text-slate-500 font-semibold uppercase">${p.estado}</span><div class="mt-1">${imgHtml}</div></div>
-                    ${rolActual === "asesor" && p.estado === "pendiente" ? `<button onclick="abrirModalVisita(${idx})" class="bg-emerald-600 text-white px-2.5 py-1.5 rounded font-bold text-[10px] shadow">Visita</button>` : ""}
-                </div>`;
-            });
-            contenedor.innerHTML = html || `<div class="text-xs text-slate-400 p-2 text-center">Sin paradas asignadas para hoy.</div>`;
-        }
-
-        async function subirFotosAlCloud(inputElement) {
-            let files = inputElement.files;
-            let urlsFotos = [];
-            if (!files || files.length === 0) return urlsFotos;
-
-            for (let i = 0; i < Math.min(files.length, 4); i++) {
-                let file = files[i];
-                let fileName = `${usuarioActual.id}_${Date.now()}_${i}.jpg`;
-                let { data, error } = await supabaseClient.storage.from('evidencias').upload(fileName, file);
-                if (!error) {
-                    let { data: publicUrlData } = supabaseClient.storage.from('evidencias').getPublicUrl(fileName);
-                    if (publicUrlData) urlsFotos.push(publicUrlData.publicUrl);
-                }
-            }
-            return urlsFotos;
-        }
-
-        function abrirModalVisita(i) { paradasVisitandoIndex = i; document.getElementById("input-fotos").value = ""; document.getElementById("input-avance").value = ""; document.getElementById("modal-visita").classList.remove("hidden"); }
-        function cerrarModalVisita() { document.getElementById("modal-visita").classList.add("hidden"); }
-
-        async function guardarVisitaExitosa() {
-            if (paradasVisitandoIndex === null) return;
-            let inputFiles = document.getElementById("input-fotos");
-            let fotosUrls = await subirFotosAlCloud(inputFiles);
-
-            usuarioActual.puntos[paradasVisitandoIndex].estado = "completado";
-            usuarioActual.puntos[paradasVisitandoIndex].fotos = fotosUrls;
-            usuarioActual.puntos[paradasVisitandoIndex].avance = document.getElementById("input-avance").value || "Visita completada";
-            
-            asesoresDB[usuarioActual.id] = usuarioActual;
-            await guardarEnSupabase();
-            cerrarModalVisita(); renderizarListaParadas(); actualizarDibujoRutaMapa();
-            alert("Visita y fotos guardadas con éxito en la nube");
-        }
-
-        async function marcarIncidenciaAusente() {
-            if (paradasVisitandoIndex === null) return;
-            usuarioActual.puntos[paradasVisitandoIndex].estado = "ausente";
-            usuarioActual.puntos[paradasVisitandoIndex].avance = "Cliente ausente / Sin novedad";
-            asesoresDB[usuarioActual.id] = usuarioActual;
-            await guardarEnSupabase();
-            cerrarModalVisita(); renderizarListaParadas(); actualizarDibujoRutaMapa();
-        }
-
-        function abrirModalVisitaEmergente() { document.getElementById("modal-emergente").classList.remove("hidden"); }
-        function cerrarModalEmergente() { document.getElementById("modal-emergente").classList.add("hidden"); }
-
-        async function guardarVisitaEmergenteReal() {
-            let nombre = document.getElementById("input-emergente-nombre").value.trim();
-            let av = document.getElementById("input-emergente-avance").value.trim();
-            let inputFiles = document.getElementById("input-fotos-emergente");
-            
-            if (!nombre) { alert("Ingrese el nombre del cliente"); return; }
-            if (!usuarioActual.lat) { alert("Esperando señal de GPS..."); return; }
-
-            let fotosUrls = await subirFotosAlCloud(inputFiles);
-
-            if (!usuarioActual.emergentes) usuarioActual.emergentes = [];
-            usuarioActual.emergentes.push({ 
-                lat: usuarioActual.lat, 
-                lng: usuarioActual.lng, 
-                cliente: nombre, 
-                avance: av || "Visita emergente", 
-                fotos: fotosUrls,
-                fecha: new Date().toLocaleDateString() 
-            });
-
-            asesoresDB[usuarioActual.id] = usuarioActual;
-            await guardarEnSupabase();
-            cerrarModalEmergente(); renderizarListaParadas(); actualizarDibujoRutaMapa();
-            alert("Emergente y fotos guardadas con éxito");
-        }
-
-        function abrirModalEvidencias() {
-            let grid = document.getElementById("contenedor-grid-evidencias");
-            let html = "";
-            Object.values(asesoresDB).forEach(usr => {
-                if(usr.puntos) usr.puntos.forEach(p => { 
-                    if(p.estado !== "pendiente") {
-                        let imgHtml = "";
-                        (p.fotos || []).forEach(url => { 
-                            imgHtml += `<a href="${url}" target="_blank"><img src="${url}" class="w-16 h-16 object-cover rounded border shadow-sm inline-block mr-1 mb-1"></a>`; 
-                        });
-                        html += `<div class="p-3 border rounded bg-slate-50 space-y-1 mb-2"><b>${usr.nombre} - ${p.cliente}</b> (${p.estado})<br><span class="text-slate-600">${p.avance}</span><div class="flex gap-2 flex-wrap mt-1">${imgHtml}</div></div>`; 
-                    }
-                });
-                if(usr.emergentes) usr.emergentes.forEach(em => { 
-                    let imgHtml = "";
-                    (em.fotos || []).forEach(url => { 
-                        imgHtml += `<a href="${url}" target="_blank"><img src="${url}" class="w-16 h-16 object-cover rounded border shadow-sm inline-block mr-1 mb-1"></a>`; 
-                    });
-                    html += `<div class="p-3 border rounded bg-blue-50 space-y-1 mb-2"><b>⚡ ${usr.nombre} - ${em.cliente} (Emergencia)</b><br><span class="text-slate-600">${em.avance}</span><div class="flex gap-2 flex-wrap mt-1">${imgHtml}</div></div>`; 
-                });
-            });
-            grid.innerHTML = html || "Sin registros o evidencias para el día de hoy.";
-            document.getElementById("modal-evidencias").classList.remove("hidden");
-        }
-        function cerrarModalEvidencias() { document.getElementById("modal-evidencias").classList.add("hidden"); }
-    </script>
+    // Inicio
+    renderVisitas();
+    obtenerUbicacion(true);
+  </script>
 </body>
 </html>
